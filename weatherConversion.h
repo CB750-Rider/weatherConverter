@@ -2,7 +2,7 @@
  * weatherConversion.h
  *
  *  Created on: Aug 11, 2016
- *      Author: lee
+ *      Author: Dr. Lee Burchett 
  *
  *      C code for converting/populating weather data.
  */
@@ -11,6 +11,7 @@
 #define WEATHERCONVERSION_H_
 
 #include <math.h>
+#include <stdio.h>
 
 typedef enum{
 	BACKWARD,
@@ -25,7 +26,21 @@ typedef enum{
 } BOOLEAN;
 #endif
 
-typedef enum{
+/* Check for successful function completion. If there is a problem, then send an
+ * error to the user. */
+#define _wcCheck(fun) do{ \
+	if((_weather_converter_global_return = fun) != WEATHER_CONVERSION_SUCCESS){ \
+		reportWeatherConversionError("\
+***ERROR IN %s at %d***\n\
+  Error reported when calling:\n\
+  " #fun ".\n\
+  The reported error was %s.\n\
+***END ERROR***\n", \
+		__FILE__,__LINE__, _weather_converter_error_messages[_weather_converter_global_return]); \
+		return _weather_converter_global_return; \
+}}while(0)
+
+typedef enum {
 	_TEMPERATURE_C, /* 0 Degrees C */
 	_TEMPERATURE_K, /* 1 Kelvin */
 	_TEMPERATURE_F, /* 2 Degrees F */
@@ -49,12 +64,9 @@ typedef enum{
 	_SPECIFIC_HUMIDITY, /* 20 grams water vapor / kilogram moist air */
 	_ABSOLUTE_HUMIDITY, /* 21 grams water vapor / meter^3 */
 	_MOIST_AIR_DENSITY, /* 22 grams / meter^3 */
+	_OTHER_INPUT, /* Anything else */
 	_N_WEATHER_FIELDS
 } WEATHER_CONVERTER_FIELD;
-
-char *_weather_converter_field_names[_N_WEATHER_FIELDS];
-char *_weather_converter_field_units_full[_N_WEATHER_FIELDS];
-char *_weather_converter_field_units[_N_WEATHER_FIELDS];
 
 typedef enum{
 	WEATHER_CONVERSION_SUCCESS,
@@ -62,8 +74,32 @@ typedef enum{
 	NO_PRESSURE_PRESENT,
 	NO_HUMIDITY_PRESENT,
 	NO_WIND_PRESENT,
-	FIELD_NOT_ALLOCATED
+	FIELD_NOT_ALLOCATED,
+	FILE_IO_ERROR,
+	DOUBLE_INITIALIZATION_ERROR,
+	ALLOCATION_ERROR,
+	UNKNOWN_ERROR,
+	N_WEATHER_CONVERSION_ERRORS
 } WEATHER_CONVERSION_ERROR;
+
+typedef struct{
+	WEATHER_CONVERSION_ERROR (*alloc)(void *WEATHER_CONVERSION_VECTOR, unsigned int size);
+	WEATHER_CONVERSION_ERROR (*free) (void *WEATHER_CONVERSION_VECTOR);
+	WEATHER_CONVERSION_ERROR (*clear_all) (void *WEATHER_CONVERSION_VECTOR);
+    WEATHER_CONVERSION_ERROR (*change_temp) (void *WEATHER_CONVERSION_VECTOR,
+                                             double *new_temps,
+											 WEATHER_CONVERTER_FIELD temp_type);
+    WEATHER_CONVERSION_ERROR (*change_pressure) (void *WEATHER_CONVERSION_VECTOR,
+                                                 double *new_pressure,
+												 WEATHER_CONVERTER_FIELD pressure_type);
+    WEATHER_CONVERSION_ERROR (*change_humidity) (void *WEATHER_CONVERSION_VECTOR,
+                                             double *new_humidity,
+                                             WEATHER_CONVERTER_FIELD humidity_type);
+	WEATHER_CONVERSION_ERROR (*set_field) (void *WEATHER_CONVERSION_VECTOR,
+										   double *value,
+                                           WEATHER_CONVERTER_FIELD field);
+    WEATHER_CONVERSION_ERROR (*run_conversion) (void *WEATHER_CONVERSION_VECTOR);                                       
+} WEATHER_CONVERSION_FUNCTIONS;
 
 typedef struct{
 	unsigned int N;
@@ -72,8 +108,15 @@ typedef struct{
 	unsigned int populated[_N_WEATHER_FIELDS];
 	double standardPressure; /* in millibars */
 	double xCO2; /* in ppm*/
+    WEATHER_CONVERSION_FUNCTIONS f; /* Reference available functions */
 } WEATHER_CONVERSION_VECTOR;
 
+/* Strings defined in weatherConversion.c */
+char *_weather_converter_field_names[_N_WEATHER_FIELDS];
+char *_weather_converter_field_flags[_N_WEATHER_FIELDS];
+char *_weather_converter_field_units_full[_N_WEATHER_FIELDS];
+char *_weather_converter_field_units[_N_WEATHER_FIELDS];
+/* Functions defined in weatherConversion.c */
 double m_sToKnots(double ms);
 double knotsTom_s(double kt);
 double KtoF(double K);
@@ -99,13 +142,25 @@ double calcMMRfromAbsoluteHumidity(double P, double T, double a);
 double calcSHfromRH(double T, double P, double xCO2, double SVP, double RH, double ef);
 double estRHfromSH(double SH, double T, double P, double xCO2, double SVP, double ef, double RH);
 WEATHER_CONVERTER_FIELD presentHumidity(WEATHER_CONVERSION_VECTOR *WX);
-WEATHER_CONVERSION_ERROR openWeatherConversionVector(WEATHER_CONVERSION_VECTOR *WX, unsigned int N);
-WEATHER_CONVERSION_ERROR freeWeatherConversionVector(WEATHER_CONVERSION_VECTOR *WX);
-WEATHER_CONVERSION_ERROR setWeatherField(WEATHER_CONVERSION_VECTOR *WX, double *x, WEATHER_CONVERTER_FIELD fi);
 WEATHER_CONVERSION_ERROR setAllFields(WEATHER_CONVERSION_VECTOR *WX);
 WEATHER_CONVERSION_ERROR setTemperatures(WEATHER_CONVERSION_VECTOR *WX);
 WEATHER_CONVERSION_ERROR setPressures(WEATHER_CONVERSION_VECTOR *WX);
 WEATHER_CONVERSION_ERROR setWinds(WEATHER_CONVERSION_VECTOR *WX);
 WEATHER_CONVERSION_ERROR humidityConversion(WEATHER_CONVERSION_VECTOR *WX);
 WEATHER_CONVERSION_ERROR altitudeCalcualtion(WEATHER_CONVERSION_VECTOR *WX);
+/* Variables required for error reporting. Definitions are in conversionVectorHelpers.c */
+char *_weather_converter_error_messages[N_WEATHER_CONVERSION_ERRORS];
+WEATHER_CONVERSION_ERROR _weather_converter_global_return;
+FILE *weather_converter_error_stream;
+/* Functions in conversionVectorHelpers.c */
+void reportWeatherConversionError(char *msg, ...);
+WEATHER_CONVERSION_ERROR openWeatherConversionVector(WEATHER_CONVERSION_VECTOR *WX, unsigned int N);
+WEATHER_CONVERSION_ERROR freeWeatherConversionVector(WEATHER_CONVERSION_VECTOR *WX);
+WEATHER_CONVERSION_ERROR setWeatherField(WEATHER_CONVERSION_VECTOR *WX, double *x, WEATHER_CONVERTER_FIELD fi);
+WEATHER_CONVERSION_ERROR initializeVector(WEATHER_CONVERSION_VECTOR *WX);
+WEATHER_CONVERSION_ERROR clearAllWeatherConversionFields(WEATHER_CONVERSION_VECTOR *WX);
+WEATHER_CONVERSION_ERROR changeTemperatures(WEATHER_CONVERSION_VECTOR *WX, double *t, WEATHER_CONVERTER_FIELD fi);
+WEATHER_CONVERSION_ERROR changePressures(WEATHER_CONVERSION_VECTOR *WX, double *p,  WEATHER_CONVERTER_FIELD fi);
+WEATHER_CONVERSION_ERROR changeHumidity(WEATHER_CONVERSION_VECTOR *WX, double *h,  WEATHER_CONVERTER_FIELD fi);
+
 #endif /* WEATHERCONVERSION_H_ */
