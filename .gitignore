@@ -1,0 +1,8 @@
+Debug
+Debug_Circ
+DebugLibrary
+Release
+.project
+.cproject
+.settings
+*.csv
