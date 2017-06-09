@@ -6,34 +6,67 @@
  */
 
 #include "weatherConversion.h"
+#ifdef _MSC_BUILD
+#define _USE_MATH_DEFINES
 #include <math.h>
+#define _MY_INFINITY HUGE_VAL
+#else
+#define _MY_INFINITY 1.0/0.0
+#endif
 #include <stdlib.h>
 #include <stdio.h>
 
 char *_weather_converter_field_names[_N_WEATHER_FIELDS] = {
-													"temperature C",
-													"temperature K",
-													"temperature F",
+													"Temperature C",
+													"Temperature K",
+													"Temperature F",
 													"U wind",
 													"V wind",
-													"wind speed",
-													"wind direction",
-													"pressure",
-													"potential temperature",
-													"virtual temperature",
-													"virtual potential temperature",
-													"saturation vapor pressure",
-													"saturation mass mixing ratio",
-													"enhancement factor",
-													"relative humidity",
-													"vapor pressure",
-													"potential vapor pressure",
-													"mole mixing ratio",
-													"mass mixing ratio",
-													"dew point",
-													"specific humidity",
-													"absolute humidity",
-													"moist air density"};
+													"Wind Speed",
+													"Wind Direction",
+													"Pressure",
+													"Potential Temperature",
+													"Virtual Temperature",
+													"Virtual Potential Temperature",
+													"Saturation Vapor Pressure",
+													"Saturation Mass Mixing Ratio",
+													"Enhancement Factor",
+													"Relative Humidity",
+													"Vapor Pressure",
+													"Potential Vapor Pressure",
+													"Mole Mixing Ratio",
+													"Mass Mixing Ratio",
+													"Dew Point",
+													"Specific Humidity",
+													"Absolute Humidity",
+													"Moist Air Density",
+													"Other Input Field"};
+
+char *_weather_converter_field_flags[_N_WEATHER_FIELDS] = {
+	"_TEMPERATURE_C", /* 0 Degrees C */
+	"_TEMPERATURE_K", /* 1 Kelvin */
+	"_TEMPERATURE_F", /* 2 Degrees F */
+	"_U_WIND", /* 3 meters / second*/
+	"_V_WIND",  /* 4 meters / second*/
+	"_WIND_SPEED",  /* 5 meters / second*/
+	"_WIND_DIRECTION", /* 6 degrees from N */
+	"_PRESSURE", /* 7 millibar */
+	"_POTENTIAL_TEMPERATURE", /* 8 Kelvin */
+	"_VIRTUAL_TEMPERATURE", /* 9 Kelvin */
+	"_VIRTUAL_POTENTIAL_TEMPERATURE", /* 10 Kelvin */
+	"_SATURATION_VAPOR_PRESSURE", /* 11 millibar */
+	"_SATURATION_MIXING_RATIO", /* 12 grams water vapor / kilogram dry air */
+	"_ENHANCEMENT_FACTOR", /* 13 unitless enhancement factor (non-ideal behavior of moist air) */
+	"_RELATIVE_HUMIDITY", /* 14 percent */
+	"_VAPOR_PRESSURE", /* 15 millibar */
+	"_POTENTIAL_VAPOR_PRESSURE", /* 16 millibar */
+	"_MOLE_MIXING_RATIO", /* 17 mole water vapor / mole moist air */
+	"_MASS_MIXING_RATIO", /* 18 grams water vapor / kilogram dry air */
+	"_DEW_POINT", /* 19 Kelvin */
+	"_SPECIFIC_HUMIDITY", /* 20 grams water vapor / kilogram moist air */
+	"_ABSOLUTE_HUMIDITY", /* 21 grams water vapor / meter^3 */
+	"_MOIST_AIR_DENSITY", /* 22 grams / meter^3 */ 
+    "_OTHER_INPUT" /* For any other field */};
 
 char *_weather_converter_field_units_full[_N_WEATHER_FIELDS] = {
 													"degrees Celsius",
@@ -58,7 +91,8 @@ char *_weather_converter_field_units_full[_N_WEATHER_FIELDS] = {
 													"Kelvin",
 													"grams water vapor / kilogram moist air",
 													"grams water vapor / meter^3",
-													"grams / meter^3"};
+													"grams / meter^3",
+													"undefined"};
 
 char *_weather_converter_field_units[_N_WEATHER_FIELDS] = {
 													"°C",
@@ -83,7 +117,8 @@ char *_weather_converter_field_units[_N_WEATHER_FIELDS] = {
 													"K",
 													"g/kg",
 													"g/m^3",
-													"g/m^3"};
+													"g/m^3",
+													"----"};
 
 double m_sToKnots(double ms){
 	return ms*1.9438444924574;}
@@ -424,40 +459,6 @@ WEATHER_CONVERTER_FIELD presentHumidity(WEATHER_CONVERSION_VECTOR *WX){
 	return _N_WEATHER_FIELDS;
 }
 
-WEATHER_CONVERSION_ERROR openWeatherConversionVector(WEATHER_CONVERSION_VECTOR *WX, unsigned int N){
-	WEATHER_CONVERTER_FIELD fi;
-	WX->N = N;
-	WX->standardPressure = 1000.0;
-	WX->xCO2 = 390.0;
-	for(fi=0;fi<_N_WEATHER_FIELDS;fi++){
-		WX->val[fi] = (double *)malloc(N*sizeof(double));
-		WX->allocated[fi] = TRUE;
-		WX->populated[fi] = FALSE;
-	}
-	return WEATHER_CONVERSION_SUCCESS;
-}
-
-WEATHER_CONVERSION_ERROR freeWeatherConversionVector(WEATHER_CONVERSION_VECTOR *WX){
-	WEATHER_CONVERTER_FIELD fi;
-	for(fi=0;fi<_N_WEATHER_FIELDS;fi++){
-		free(WX->val[fi]);
-		WX->allocated[fi] = FALSE;
-	}
-	return WEATHER_CONVERSION_SUCCESS;
-}
-
-WEATHER_CONVERSION_ERROR setWeatherField(WEATHER_CONVERSION_VECTOR *WX, double *x, WEATHER_CONVERTER_FIELD fi){
-	unsigned int i;
-	if(WX->allocated[fi]){
-		for(i=0;i<WX->N;i++)
-			WX->val[fi][i] = x[i];
-		WX->populated[fi] = TRUE;
-		return WEATHER_CONVERSION_SUCCESS;
-	}
-	printf("weatherConversion.h:setWeatherField() Field has not been allocated.\n");
-	return FIELD_NOT_ALLOCATED;
-}
-
 WEATHER_CONVERSION_ERROR setAllFields(WEATHER_CONVERSION_VECTOR *WX){
 	WEATHER_CONVERSION_ERROR retVal;
 	unsigned int i;
@@ -654,7 +655,7 @@ WEATHER_CONVERSION_ERROR setPressures(WEATHER_CONVERSION_VECTOR *WX){
 		for(i=0;i<WX->N;i++){
 			/* If the actual pressure is less than the saturation pressure, then assume that there is no dry air. */
 			if(WX->val[_PRESSURE][i] < WX->val[_SATURATION_VAPOR_PRESSURE][i])
-				WX->val[_SATURATION_MIXING_RATIO][i] = 1.0/0.0;
+				WX->val[_SATURATION_MIXING_RATIO][i] = _MY_INFINITY;
 			else
 				WX->val[_SATURATION_MIXING_RATIO][i] = 622.0*WX->val[_SATURATION_VAPOR_PRESSURE][i]/(WX->val[_PRESSURE][i]-WX->val[_SATURATION_VAPOR_PRESSURE][i]);
 		}
@@ -737,7 +738,7 @@ WEATHER_CONVERSION_ERROR humidityConversion(WEATHER_CONVERSION_VECTOR *WX){
 			if(WX->val[_PRESSURE][i] > WX->val[_SATURATION_MIXING_RATIO][i])
 				WX->val[_MASS_MIXING_RATIO][i] = 622.0*WX->val[_VAPOR_PRESSURE][i]/(WX->val[_PRESSURE][i]-WX->val[_VAPOR_PRESSURE][i]);
 			else
-				WX->val[_MASS_MIXING_RATIO][i] = 1.0/0.0;
+				WX->val[_MASS_MIXING_RATIO][i] = _MY_INFINITY;
 		}
 
 		WX->populated[_MASS_MIXING_RATIO]=TRUE;
