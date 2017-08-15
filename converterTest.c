@@ -19,7 +19,6 @@ void setTestVector(WEATHER_CONVERSION_VECTOR *TST, WEATHER_CONVERSION_VECTOR *ST
 int main(){
 	WEATHER_CONVERSION_VECTOR STANDARD;
 	WEATHER_CONVERSION_VECTOR TEST;
-	//_WEATHER_CONVERTER_FIELD_NAMES;
 
 	importFile("humidityTest.csv",&STANDARD);
 	openWeatherConversionVector(&TEST, STANDARD.N);
@@ -100,7 +99,6 @@ void importFile(const char *fname, WEATHER_CONVERSION_VECTOR *OUT){
 double compare(WEATHER_CONVERSION_VECTOR *TST, WEATHER_CONVERSION_VECTOR *STD){
 	double totalErr = 0.0,tmpError;
 	WEATHER_CONVERTER_FIELD ri;
-	//_WEATHER_CONVERTER_FIELD_NAMES;
 
 	for(ri=0;ri<_N_WEATHER_FIELDS;ri++){
 		if((tmpError=relError(TST->val[ri],STD->val[ri],TST->N)) > 1.0e-6)
