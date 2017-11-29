@@ -66,6 +66,8 @@ typedef enum{
 		return _weather_converter_global_return; \
 }}while(0)
 
+/* TODO Add altitude information, Geopotential height, surface height, height asl, and height agl,
+ * the allow for column integration of humidity.  */
 typedef enum {
 	_TEMPERATURE_C, /* 0 Degrees C */
 	_TEMPERATURE_K, /* 1 Kelvin */
