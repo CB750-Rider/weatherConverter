@@ -37,6 +37,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
 #include <errno.h>
 
 char *_weather_converter_error_messages[N_WEATHER_CONVERSION_ERRORS] = {
@@ -49,7 +50,8 @@ char *_weather_converter_error_messages[N_WEATHER_CONVERSION_ERRORS] = {
 	"A FILE INPUT/OUTPUT ERROR WAS DETECTED",
 	"A VECTOR THAT HAS ALREADY BEEN INITIALIZED WAS INITIALIZED AGAIN, AND MAY CAUSE A MEMORY LEAK.",
 	"AN ERROR WAS ENCOUNTERED WHEN ALLOCATING MEMORY",
-	"AN UNKNOWN OR UNSPECIFIED ERROR WAS ENCOUNTERED"};
+	"AN UNKNOWN OR UNSPECIFIED ERROR WAS ENCOUNTERED",
+    "AN UNRECOVERABLE ERROR WAS ENCOUNTERED DURING PROGRAM INITIALIZATION"};
 /* Keep track of any initialized vectors. */
 static unsigned int N_vector = 0;
 static WEATHER_CONVERSION_VECTOR **initialized_vectors=NULL;
@@ -85,6 +87,7 @@ static void remove_vector_from_init_list(WEATHER_CONVERSION_VECTOR *WX){
 	N_vector--;
 	initialized_vectors = realloc(initialized_vectors,sizeof(WEATHER_CONVERSION_VECTOR*)*(N_vector));
 }
+
 void reportWeatherConversionError(char *msg, ...){
 	/* This function prints errors to stdout by default, but this will also
 	work with other streams. */
@@ -120,8 +123,11 @@ WEATHER_CONVERSION_ERROR openWeatherConversionVector(WEATHER_CONVERSION_VECTOR *
 	WEATHER_CONVERTER_FIELD fi;
 	_wcCheck(initializeVector(WX));
 	WX->N = N;
-	WX->standardPressure = 1000.0;
-	WX->xCO2 = 390.0;
+	WX->standardPressure = _weather_converter_site_defaults[_STANDARD_PRESSURE];
+	WX->xCO2 = _weather_converter_site_defaults[_XCO2];
+	WX->surfaceHeight = _weather_converter_site_defaults[_SURFACE_HEIGHT];
+	WX->surfacePressure = _weather_converter_site_defaults[_SURFACE_PRESSURE];
+	WX->latitude = _weather_converter_site_defaults[_SITE_LATITUDE];
 	for(fi=0;fi<_N_WEATHER_FIELDS;fi++){
 		WX->val[fi] = (double *)malloc(N*sizeof(double));
 		WX->allocated[fi] = TRUE;
@@ -129,7 +135,6 @@ WEATHER_CONVERSION_ERROR openWeatherConversionVector(WEATHER_CONVERSION_VECTOR *
 	}
 	return WEATHER_CONVERSION_SUCCESS;
 }
-
 WEATHER_CONVERSION_ERROR freeWeatherConversionVector(WEATHER_CONVERSION_VECTOR *WX){
 	WEATHER_CONVERTER_FIELD fi;
 	for(fi=0;fi<_N_WEATHER_FIELDS;fi++){
@@ -139,7 +144,6 @@ WEATHER_CONVERSION_ERROR freeWeatherConversionVector(WEATHER_CONVERSION_VECTOR *
 	remove_vector_from_init_list(WX);
 	return WEATHER_CONVERSION_SUCCESS;
 }
-
 WEATHER_CONVERSION_ERROR setWeatherField(WEATHER_CONVERSION_VECTOR *WX, double *x, WEATHER_CONVERTER_FIELD fi){
 	unsigned int i;
 	if(WX->allocated[fi]){
@@ -151,7 +155,6 @@ WEATHER_CONVERSION_ERROR setWeatherField(WEATHER_CONVERSION_VECTOR *WX, double *
 	printf("weatherConversion.h:setWeatherField() Field has not been allocated.\n");
 	return FIELD_NOT_ALLOCATED;
 }
-
 WEATHER_CONVERSION_ERROR initializeVector(WEATHER_CONVERSION_VECTOR *WX){
 	/* Set up an empty and open weather conversion vector. This should only be
 	 * called once for each vector. */
@@ -174,6 +177,10 @@ WEATHER_CONVERSION_ERROR initializeVector(WEATHER_CONVERSION_VECTOR *WX){
 	WX->f.change_humidity = (WEATHER_CONVERSION_ERROR (*) (void *,double *,WEATHER_CONVERTER_FIELD))&changeHumidity;
 	WX->f.set_field = (WEATHER_CONVERSION_ERROR (*) (void *,double *,WEATHER_CONVERTER_FIELD))&setWeatherField;
 	WX->f.run_conversion = (WEATHER_CONVERSION_ERROR (*)(void *))&setAllFields;
+	WX->f.integrate_column_water_density = (double (*)(void *, double, double))&integrateColumnWaterDensity;
+	WX->f.integrate_column_water_number_density = (double(*)(void *, double, double))&integrateColumnWaterNumberDensity;
+	WX->f.integrate_column_moist_air_density = (double(*)(void *, double, double))&integrateColumnMoistAirDensity;
+	WX->f.integrate_column_moist_air_number_density = (double(*)(void *, double, double))&integrateColumnMoistAirNumberDensity;
 	if(rv==DOUBLE_INITIALIZATION_ERROR)return rv;
 	_wcCheck(add_vector_to_init_list(WX));
 	return WEATHER_CONVERSION_SUCCESS;
@@ -221,7 +228,8 @@ WEATHER_CONVERSION_ERROR changeHumidity(WEATHER_CONVERSION_VECTOR *WX, double *h
 	/* Clear out all possible humidity fields */
 	WEATHER_CONVERTER_FIELD i, hflds[] = {_RELATIVE_HUMIDITY, _VAPOR_PRESSURE,
 			_POTENTIAL_VAPOR_PRESSURE, _MOLE_MIXING_RATIO, _MASS_MIXING_RATIO,
-			_DEW_POINT,_SPECIFIC_HUMIDITY,_ABSOLUTE_HUMIDITY, _MOIST_AIR_DENSITY};
+			_DEW_POINT_C,_DEW_POINT_K,_DEW_POINT_F,_SPECIFIC_HUMIDITY,
+			_ABSOLUTE_HUMIDITY, _MOIST_AIR_DENSITY};
 	for(i=0;i<(sizeof(hflds)/sizeof(WEATHER_CONVERTER_FIELD));i++){
 		WX->populated[hflds[i]] = FALSE;
 	}
@@ -232,3 +240,104 @@ WEATHER_CONVERSION_ERROR changeHumidity(WEATHER_CONVERSION_VECTOR *WX, double *h
 
 	return WEATHER_CONVERSION_SUCCESS;
 }
+WEATHER_CONVERSION_ERROR changeHeight(WEATHER_CONVERSION_VECTOR *WX, double *h,WEATHER_CONVERTER_FIELD fi){
+	/* Clear out all possible humidity fields */
+	WEATHER_CONVERTER_FIELD i, hflds[] = {_GEOPOTENTIAL_HEIGHT, _HEIGHT_AGL,
+	_HEIGHT_AMSL};
+	for(i=0;i<(sizeof(hflds)/sizeof(WEATHER_CONVERTER_FIELD));i++){
+		WX->populated[hflds[i]] = FALSE;
+	}
+
+	_wcCheck(setWeatherField(WX,h,fi));
+
+	_wcCheck(setAllFields(WX));
+
+	return WEATHER_CONVERSION_SUCCESS;
+}
+WEATHER_CONVERSION_ERROR parseSiteSettingnsLine(char *line, WEATHER_CONVERSION_VECTOR *WX){
+	/* Convenience function to read a line and look for any setting flags for the site location. */
+	SITE_SPECIFIC_SETTINGS si;
+	char *sp,*dmp;
+	double new_value;
+	static BOOLEAN surface_height_set = FALSE;
+	static BOOLEAN surface_pressure_set = FALSE;
+
+	if (line == NULL) {
+		/* Called when no more data are being read in. */
+		if (surface_height_set) {
+			if (surface_pressure_set) {
+				/* We are done. */
+				return WEATHER_CONVERSION_SUCCESS;
+			} /* If both are set, then we are done. */
+			else{
+				/* Figure out the pressure from the height. */
+				WX->surfacePressure = standardAtmosPressureAtAltitude(WX->surfaceHeight);
+				return WEATHER_CONVERSION_SUCCESS;
+			} /* If the surface pressure wasn't set. */
+		}
+		else {
+			if (surface_pressure_set) {
+				WX->surfaceHeight = standardAtmosAltitudeAtPressure(WX->surfacePressure);
+				return WEATHER_CONVERSION_SUCCESS;
+			}
+			else {
+				/* Do our best guess */
+				if (WX->populated[_PRESSURE])
+					WX->surfacePressure = WX->val[_PRESSURE][0];
+				else
+					WX->surfacePressure = 1013.25;
+				WX->surfaceHeight = standardAtmosAltitudeAtPressure(WX->surfacePressure);
+				return WEATHER_CONVERSION_SUCCESS;
+			} /* If the surface pressure wasn't set either. */
+		} /* If the surface heights were not set. */
+	} /* If there was nothing in the line, then figure out the pressures and temperatures. */ 
+
+	for(si=0;si<_N_WEATHER_SITE_SPECIFIC_SETTINGS; si++){
+		if((sp=strstr(line,_weather_converter_site_setting_flags[si])) != NULL){
+			new_value = strtod(
+					sp+strlen(_weather_converter_site_setting_flags[si]),
+					&dmp);
+			if( (errno==ERANGE || errno==EINVAL) &&
+									new_value == 0.0){
+								printf("Error %s encountered when attempting to set\n"
+										" %s. The default value will be used instead. \n",
+										strerror(errno),
+										_weather_converter_field_flags[si]);
+							} /* If there was a problem */
+			else{
+				switch(si){
+				case _STANDARD_PRESSURE:
+					WX->standardPressure = new_value;
+					break;
+				case _XCO2:
+					WX->xCO2 = new_value;
+					break;
+				case _SITE_LATITUDE:
+					if (new_value < -90.0 && new_value > 90.0)
+						printf("Error in Site Latitude Value, %lf. The value should be between -90 and 90.\n"
+								"The default value will be used instead.\n",new_value);
+					else
+						WX->latitude = new_value;
+					break;
+				case _SURFACE_HEIGHT:
+					WX->surfaceHeight = new_value;
+					surface_height_set = TRUE;
+					break;
+				case _SURFACE_PRESSURE:
+					WX->surfacePressure = new_value;
+					surface_height_set = TRUE;
+					break;
+				default:
+					printf("Error encountered when parsing site specific settings.\n"
+							"A setting for %s was requested, but the parsing function\n"
+							"does not know how to handle these values yet.\n"
+							"Please see conversionVectorHelpers:parseSiteSettingLine().\n",
+							_weather_converter_field_flags[si]);
+					break;
+				} /* End the switch*/
+			} /* End if there were no errors in reading the value */
+		} /* End if we found a flag in the line  */
+	} /* End for each possible site setting */
+
+	return WEATHER_CONVERSION_SUCCESS;
+} /* End function */
