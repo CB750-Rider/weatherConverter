@@ -669,9 +669,10 @@ WEATHER_CONVERSION_ERROR setPressures(WEATHER_CONVERSION_VECTOR *WX){
 		WX->populated[_POTENTIAL_TEMPERATURE]=TRUE;
 	}
 	else if(WX->populated[_POTENTIAL_TEMPERATURE] && WX->populated[_TEMPERATURE_K]){
-		if(WX->populated[_PRESSURE]==FALSE)
+		if(WX->populated[_PRESSURE]==FALSE){
 			for(i=0;i<WX->N;i++)
 				WX->val[_PRESSURE][i] = calcPotentialTemperature(WX->standardPressure, WX->val[_TEMPERATURE_K][i],WX->val[_POTENTIAL_TEMPERATURE][i],FOREWARD);
+			}
 			WX->populated[_PRESSURE]=TRUE;
 		}
 	else
