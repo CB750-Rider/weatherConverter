@@ -47,6 +47,8 @@ SOFTWARE.
 #include <stdlib.h>
 #include <stdio.h>
 
+static int is_unstable(double num,double denom, double X0);
+
 char *_weather_converter_field_names[_N_WEATHER_FIELDS] = {
 													"Temperature C", /*0*/
 													"Temperature K", /*1*/
@@ -214,7 +216,18 @@ double _weather_converter_site_defaults[_N_WEATHER_SITE_SPECIFIC_SETTINGS] = {
 		0.0, /* Site surface elevation AMSL*/
 		1013.25 /* Surface pressure */
 };
-
+int is_unstable(double num,double denom,double X0){
+	/* Check for numerical stability of division */
+	double lnum,lden,lx;
+	if(num==0.0 || denom==0.0)return 1;
+	lnum = log10(fabs(num));
+	lden = log10(fabs(denom));
+	lx = log10(fabs(X0));
+	/* If the ratio of lnum to lden is much greater than X0, then
+	 * the results are probably ill-conditioned */
+	if( (lnum - lden) > (lx - 2)) return 1;
+	return (fabs(lnum-lden) > 12);
+}
 double latitude_gravity(double lat){
 	/* Gravity formula 1980 from The Geodesist's Handbook 2000, p132
 	 * input is latitude in degrees
@@ -270,31 +283,31 @@ double calcDewpoint(double T, double RH, double SVP){
 	term1 = log(SVP*RH/611.2);
 	dewPoint = 243.75*term1/(17.67-term1)+273.15;
 	/* Now improve the estimate of the dew point using
-	 * f(dewpoint) = es*RH/100 - goffGratch(dewPoint)
+	 * f(dewpoint) = SVP*RH/100 - goffGratch(dewPoint)
 	 * and find where f=0. */
 	alpha = SVP*RH/100;
 	/* We start off close so 4 iterations of Newton's method is plenty. */
 	num = (alpha-goffGratch(dewPoint)); /* One */
 	denom = DgoffGratch_dT(dewPoint);
-	if(denom==0.0 || num==0.0)
+	if(is_unstable(num,denom,dewPoint))
 		return dewPoint;
 	dewPoint += num/denom;
 
 	num = (alpha-goffGratch(dewPoint)); /* Two */
 	denom = DgoffGratch_dT(dewPoint);
-	if(denom==0.0 || num==0.0)
+	if(is_unstable(num,denom,dewPoint))
 		return dewPoint;
 	dewPoint += num/denom;
 
 	num = (alpha-goffGratch(dewPoint)); /* Three */
 	denom = DgoffGratch_dT(dewPoint);
-	if(denom==0.0 || num==0.0)
+	if(is_unstable(num,denom,dewPoint))
 		return dewPoint;
 	dewPoint += num/denom;
 
 	num = (alpha-goffGratch(dewPoint)); /* Four */
 	denom = DgoffGratch_dT(dewPoint);
-	if(denom==0.0 || num==0.0)
+	if(is_unstable(num,denom,dewPoint))
 		return dewPoint;
 	dewPoint += num/denom;
 
@@ -531,7 +544,7 @@ double calcMMRfromAbsoluteHumidity(double P, double T, double a){
 	for(i=0;i<6;i++){ /* Six iterations of newton's method */
 		num = a- moistAirNumberDensity(T,P,xv)*xv*Mv;
 		denom = dBeta_dxv(T,P,xv)*xv*Mv + moistAirNumberDensity(T,P,xv)*Mv;
-		if (denom == 0.0 || num==0.0)break;
+		if (is_unstable(num,denom,xv)) break;
 		xv = xv + num/denom;
 	}
 	return xv;
@@ -554,7 +567,7 @@ double estRHfromSH(double SH, double T, double P, double xCO2, double SVP, doubl
 	 * Ratio is numerically unstable, this method starts with an estimate of the
 	 * RH, and refines the estimate using Newton's Method. */
 	int step;
-	double RHp,RHm,del = 1.0,dS_dR,dRH;
+	double RHp,RHm,del = 1.0,dS_dR,dRH,dS,num;
 
 	for(step=0;step<6;step++){
 		/* use centered differencing to get the slope */
@@ -562,16 +575,24 @@ double estRHfromSH(double SH, double T, double P, double xCO2, double SVP, doubl
 		RHp = (RH + del) <= 1.0 ? RH+del : RH;
 
 		/* Find the dSH / dRH. */
-		if((dRH = (RHp - RHm))==0.0) break;
+		dRH = (RHp - RHm);
+		dS = calcSHfromRH(T,P,xCO2,SVP,RHp,ef) - calcSHfromRH(T,P,xCO2,SVP,RHm,ef);
 
-		if((dS_dR = (calcSHfromRH(T,P,xCO2,SVP,RHp,ef) - calcSHfromRH(T,P,xCO2,SVP,RHm,ef) ) /
-				dRH)==0.0)break;
+		if (is_unstable(dS,dRH,RH)) break;
+		else
+			dS_dR =  dS/dRH;
 
 		/* Get the update in RH */
-		del = (calcSHfromRH(T,P,xCO2,SVP,RH,ef) - SH)/dS_dR;
+		num = (calcSHfromRH(T,P,xCO2,SVP,RH,ef) - SH);
+
+		if(is_unstable(num,dS_dR,RH)) break;
+		else
+			del = num/dS_dR;
 
 		/* update RH */
-		if ((RH -= del) == 0.0) break;
+		RH -= del;
+
+		if(is_unstable(del,RH,RH)) break;
 
 		/* Decide to continue */
 		if (fabs(del / RH) < 1e-12) break;
