@@ -57,7 +57,7 @@ void importFile(const char *fname, WEATHER_CONVERSION_VECTOR *OUT){
 		OUT->val[_PRESSURE][i]=strtod(dmp,&dmp);
 		OUT->val[_RELATIVE_HUMIDITY][i]=strtod(dmp,&dmp);
 		OUT->val[_ABSOLUTE_HUMIDITY][i]=strtod(dmp,&dmp);
-		OUT->val[_DEW_POINT][i]=strtod(dmp,&dmp);
+		OUT->val[_DEW_POINT_K][i]=strtod(dmp,&dmp);
 		OUT->val[_ENHANCEMENT_FACTOR][i]=strtod(dmp,&dmp);
 		OUT->val[_MASS_MIXING_RATIO][i]=strtod(dmp,&dmp);
 		OUT->val[_MOIST_AIR_DENSITY][i]=strtod(dmp,&dmp);
@@ -76,7 +76,7 @@ void importFile(const char *fname, WEATHER_CONVERSION_VECTOR *OUT){
 	OUT->populated[_PRESSURE]=TRUE;
 	OUT->populated[_RELATIVE_HUMIDITY]=TRUE;
 	OUT->populated[_ABSOLUTE_HUMIDITY]=TRUE;
-	OUT->populated[_DEW_POINT]=TRUE;
+	OUT->populated[_DEW_POINT_K]=TRUE;
 	OUT->populated[_ENHANCEMENT_FACTOR]=TRUE;
 	OUT->populated[_MASS_MIXING_RATIO]=TRUE;
 	OUT->populated[_MOIST_AIR_DENSITY]=TRUE;

@@ -92,7 +92,9 @@ int importFile(const char *fname, WEATHER_CONVERSION_VECTOR *OUT){
 	OUT->populated[_PRESSURE]=TRUE;
 	OUT->populated[_RELATIVE_HUMIDITY]=FALSE;
 	OUT->populated[_ABSOLUTE_HUMIDITY]=FALSE;
-	OUT->populated[_DEW_POINT]=FALSE;
+	OUT->populated[_DEW_POINT_C]=FALSE;
+	OUT->populated[_DEW_POINT_F]=FALSE;
+	OUT->populated[_DEW_POINT_K]=FALSE;
 	OUT->populated[_ENHANCEMENT_FACTOR]=FALSE;
 	OUT->populated[_MASS_MIXING_RATIO]=FALSE;
 	OUT->populated[_MOIST_AIR_DENSITY]=FALSE;
