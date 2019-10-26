@@ -86,7 +86,12 @@ static void remove_vector_from_init_list(WEATHER_CONVERSION_VECTOR *WX){
 		}
 	}
 	N_vector--;
-	initialized_vectors = realloc(initialized_vectors,sizeof(WEATHER_CONVERSION_VECTOR*)*(N_vector));
+	if(N_vector>0)
+		initialized_vectors = realloc(initialized_vectors,sizeof(WEATHER_CONVERSION_VECTOR*)*(N_vector));
+	else{
+		free(initialized_vectors);
+		initialized_vectors=NULL;
+	}
 }
 
 void reportWeatherConversionError(char *msg, ...){
