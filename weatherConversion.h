@@ -1,17 +1,4 @@
-/*
- * weatherConversion.c
- *
- *  Created on: Aug 11, 2016
- *      Author: Dr. Lee Burchett  
- *
- *  Last Modified: 6 June, 2017
- * 
- * Thes file contains header prototypes and tools for routines that are useful 
- * for converting the myriad ways that researchers use to represent humidity in 
- * the atmosphere. The goal is to provide a tool to save time on writing and 
- * debugging these conversions. If any conversion data appear suspect. Please 
- * contact me with suggested changes at lee.r.burchett@gmail.com.
- *
+/* weatherConversion.h
  * Copyright (c) 2016 Dr. Lee Burchett
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -31,6 +18,17 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE. 
+ *
+ *  Created on: Aug 11, 2016
+ *      Author: Dr. Lee Burchett  
+ * 
+ * Thes file contains header prototypes and tools for routines that are useful 
+ * for converting the myriad ways that researchers use to represent humidity in 
+ * the atmosphere. The goal is to provide a tool to save time on writing and 
+ * debugging these conversions. If any conversion data appear suspect. Please 
+ * contact me with suggested changes at lee.r.burchett@gmail.com.
+ *
+
  */
 
 #ifdef _MSC_BUILD
