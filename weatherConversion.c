@@ -1,18 +1,6 @@
-/*
- * weatherConversion.c
- *
- *  Created on: Aug 11, 2016
- *      Author: Dr. Lee Burchett  
- *
- *  Last Modified: 6 June, 2017
- * 
- * Thes file contains routines useful for converting the myriad ways that 
- * researchers use to represent humidity in the atmosphere. The goal is to 
- * provide a tool to save time on writing and debugging these conversions. 
- * If any conversion data appear suspect. Please contact me with suggested
- * changes at lee.r.burchett@gmail.com.
-
-Copyright (c) 2016 Dr. Lee Burchett
+/* weatherConversion.c
+ 
+Copyright (C) 2016 Dr. Lee R. Burchett
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +19,18 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE. 
+ *
+ *  Created on: Aug 11, 2016
+ *      Author: Dr. Lee Burchett  
+ *
+ *  Last Modified: 20 August, 2019
+ * 
+ * Thes file contains routines useful for converting the myriad ways that 
+ * researchers use to represent humidity in the atmosphere. The goal is to 
+ * provide a tool to save time on writing and debugging these conversions. 
+ * If any conversion data appear suspect. Please contact me with suggested
+ * changes at lee.r.burchett@gmail.com.
+
  */
 
 #include "weatherConversion.h"
@@ -405,7 +405,7 @@ double calcAbsolute(double T, double P, double moleMixingRatio){
     %   absoluteHumidity (g/m^3)
     %
     % References:
-    %   See NIST http://www.nist.gov/calibrations/upload/metv29i1p67-2.pdf*/
+    %   See NIST http://www.nist.gov/calibrations/upload/metv29i1p67-2.pdf */
 	double beta,Z; /* Number density of moist air, Compressibility of moist air */
 
 	Z = calcCompressibility(T,P,moleMixingRatio);
@@ -442,6 +442,7 @@ double calcPotentialTemperature(double T, double P, double P0, CALCULATION_DIREC
 	return T*pow(P0/P,2.0/7.0*(double)D);
 }
 double calcVirtualTemperature(double T, double mr, CALCULATION_DIRECTION D){
+	/* See http://glossary.ametsoc.org/wiki/Virtual_temperature */
 	if (D)
 		return T * (1.0 + 0.61 * mr/1000.0);
 	else
