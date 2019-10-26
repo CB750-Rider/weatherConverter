@@ -1,5 +1,5 @@
 /* weatherConversion.h
- * Copyright (c) 2016 Dr. Lee Burchett
+ * Copyright (C) 2016 Dr. Lee Burchett
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -216,7 +216,7 @@ double calcMoistAirDensity(double T, double P, double xv, double xCO2);
 double moistAirNumberDensity(double P, double T, double xv);
 double dZ_dxv(double T, double p, double x);
 double calcSpecificHumidity(double mr);
-double calcMixingRatio(double P, double vp);
+double calcMassMixingRatio(double P, double vp);
 double calcMMRfromAbsoluteHumidity(double P, double T, double a);
 double calcSHfromRH(double T, double P, double xCO2, double SVP, double RH, double ef);
 double estRHfromSH(double SH, double T, double P, double xCO2, double SVP, double ef, double RH);
@@ -232,6 +232,8 @@ double integrateColumnMoistAirDensity(WEATHER_CONVERSION_VECTOR *WX, double z0, 
 double integrateColumnMoistAirNumberDensity(WEATHER_CONVERSION_VECTOR *WX, double z0, double z1);
 double standardAtmosAltitudeAtPressure(double P);
 double standardAtmosPressureAtAltitude(double Z);
+double _relError(double a, double b);
+
 WEATHER_CONVERTER_FIELD presentHumidity(WEATHER_CONVERSION_VECTOR *WX);
 WEATHER_CONVERSION_ERROR setAllFields(WEATHER_CONVERSION_VECTOR *WX);
 WEATHER_CONVERSION_ERROR setTemperatures(WEATHER_CONVERSION_VECTOR *WX);

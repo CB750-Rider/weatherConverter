@@ -31,36 +31,131 @@ SOFTWARE.
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
+#include <string.h>
 
 void importFile(const char *fname, WEATHER_CONVERSION_VECTOR *OUT);
+void saveToFile(WEATHER_CONVERSION_VECTOR *V, const char *fname);
+void setUpTest(WEATHER_CONVERSION_VECTOR *V);
 double compare(WEATHER_CONVERSION_VECTOR *A, WEATHER_CONVERSION_VECTOR *B);
 double relError(double *a, double *b, unsigned int N);
-double _relError(double a, double b);
 void setTestVector(WEATHER_CONVERSION_VECTOR *TST, WEATHER_CONVERSION_VECTOR *STD, WEATHER_CONVERTER_FIELD field);
+
+static 	WEATHER_CONVERTER_FIELD WC_field_list[] = {
+		_TEMPERATURE_K,
+		_PRESSURE,
+		_RELATIVE_HUMIDITY,
+		_ABSOLUTE_HUMIDITY,
+		_DEW_POINT_K,
+		_ENHANCEMENT_FACTOR,
+		_MASS_MIXING_RATIO,
+		_MOIST_AIR_DENSITY,
+		_MOLE_MIXING_RATIO,
+		_POTENTIAL_TEMPERATURE,
+		_SATURATION_MIXING_RATIO,
+		_SATURATION_VAPOR_PRESSURE,
+		_SPECIFIC_HUMIDITY,
+		_VAPOR_PRESSURE,
+		_VIRTUAL_POTENTIAL_TEMPERATURE,
+		_VIRTUAL_TEMPERATURE};
 
 int main(){
 	WEATHER_CONVERSION_VECTOR STANDARD;
 	WEATHER_CONVERSION_VECTOR TEST;
-
-	importFile("humidityTest.csv",&STANDARD);
-	openWeatherConversionVector(&TEST, STANDARD.N);
-
 	WEATHER_CONVERTER_FIELD ri;
 
+	printf("Running tests to see how well the conversions work.\n");
+
+	printf("Performing a self-consistency test. (Can we go forward and back).\n");
+	setUpTest(&STANDARD);
+	openWeatherConversionVector(&TEST, STANDARD.N);
 	for(ri=_RELATIVE_HUMIDITY;ri<_MOIST_AIR_DENSITY;ri++){
-		printf("Now starting with %s.\n",_weather_converter_field_names[ri]);
+		printf("Now performing the conversion starting with temperature, pressure, and %s.\n",_weather_converter_field_names[ri]);
 		setTestVector(&TEST,&STANDARD,ri);
-		printf("MEAN ABSOLUTE RELATIVE ERROR = %g.\n",compare(&TEST,&STANDARD));
+		printf("MEAN SQUARED RELATIVE ERROR = %g.\n",compare(&TEST,&STANDARD));
 	}
+	freeWeatherConversionVector(&STANDARD);
+	freeWeatherConversionVector(&TEST);
+
+	printf("Performing a comparison to standard data.\n");
+	importFile("humidityTest.csv",&STANDARD);
+	openWeatherConversionVector(&TEST, STANDARD.N);
+	for(ri=_RELATIVE_HUMIDITY;ri<_MOIST_AIR_DENSITY;ri++){
+		printf("Now performing the conversion starting with temperature, pressure, and %s.\n",_weather_converter_field_names[ri]);
+		setTestVector(&TEST,&STANDARD,ri);
+		printf("MEAN SQUARED RELATIVE ERROR = %g.\n",compare(&TEST,&STANDARD));
+	}
+	freeWeatherConversionVector(&STANDARD);
+	freeWeatherConversionVector(&TEST);
 
 	return 0;
 }
 
+void setUpTest(WEATHER_CONVERSION_VECTOR *V){
+	double P[] = {1.,5.,10.,15.,20.,40.,80.,100.,200.,300.,400.,500.,600.,700.,800.,900.,950.,1000.,1050.,1100.,1150.,1200.,1250.,1300.}; /* in mb */
+	double T=250.,_T[] = {250.,5.,320.}; /* Temperature range (min,step,max) */
+	double RH=0.,_RH[] = {0.1,4.99,100.}; /* Relative Humidity Range */
+
+	size_t iP,iT,iRH,idx,NP=sizeof(P)/sizeof(double);
+	size_t NT = (size_t) ( (_T[2]-_T[0])/_T[1]);
+	size_t NRH = (size_t) ( (_RH[2]-_RH[0])/_RH[1]);
+
+	openWeatherConversionVector(V,(unsigned int)NP*NT*NRH);
+
+	for(iP=0;iP<NP;iP++){
+		for(iT=0;iT<NT;iT++){
+			T = _T[0] + (double)iT*_T[1];
+			for(iRH=0;iRH<NRH;iRH++){
+				RH = _RH[0] + (double)iRH*_RH[1];
+				idx = iP*NT*NRH + iT*NRH + iRH;
+				V->val[_TEMPERATURE_K][idx] = T;
+				V->val[_PRESSURE][idx] = P[iP];
+				V->val[_RELATIVE_HUMIDITY][idx] = RH;
+				V->val[_U_WIND][idx] = 1.0;
+				V->val[_V_WIND][idx] = 1.0;
+			}
+		}
+	}
+
+	V->populated[_TEMPERATURE_K]=TRUE;
+	V->populated[_PRESSURE]=TRUE;
+	V->populated[_RELATIVE_HUMIDITY]=TRUE;
+	V->populated[_U_WIND]=TRUE;
+	V->populated[_V_WIND]=TRUE;
+
+	setAllFields(V);
+
+	saveToFile(V,"temporaryHumidityTest.csv");
+}
+void saveToFile(WEATHER_CONVERSION_VECTOR *V, const char *fname){
+	FILE *fp;
+	fp = fopen(fname,"w");
+	uint i,j,N=(uint)sizeof( WC_field_list)/sizeof(WEATHER_CONVERTER_FIELD);
+	WEATHER_CONVERTER_FIELD fi;
+
+	if(fp==NULL){
+		printf("Unable to open %s for writing.\n",fname);
+		return;
+	}
+
+	for(i=0;i<V->N;i++){
+		fi = WC_field_list[0];
+		fprintf(fp,"%18.16lf",V->val[fi][i]);
+		for(j=1;j<N;j++){
+			fi = WC_field_list[j];
+			fprintf(fp,",%18.16lf",V->val[fi][i]); /* <- added a comma */
+		}
+		fprintf(fp,"\n");
+	}
+	fclose(fp);
+}
 void importFile(const char *fname, WEATHER_CONVERSION_VECTOR *OUT){
 	FILE *fp;
 	fp = fopen(fname,"r");
 	uint N,i;
 	char line[2000],*dmp;
+	uint j,NF=(uint)sizeof( WC_field_list)/sizeof(WEATHER_CONVERTER_FIELD);
+	WEATHER_CONVERTER_FIELD fi;
 
 	for(N=0;feof(fp)==0;N++)
 		if(fgets(line,2000,fp)==NULL){
@@ -75,43 +170,26 @@ void importFile(const char *fname, WEATHER_CONVERSION_VECTOR *OUT){
 		if (i==N) break;
 		if(fgets(line,2000,fp)==NULL)
 			printf("converterTest.c:importFile() Error reading line %d in %s.\n",i,fname);
-		OUT->val[_TEMPERATURE_K][i]=strtod(line,&dmp);
-		OUT->val[_PRESSURE][i]=strtod(dmp,&dmp);
-		OUT->val[_RELATIVE_HUMIDITY][i]=strtod(dmp,&dmp);
-		OUT->val[_ABSOLUTE_HUMIDITY][i]=strtod(dmp,&dmp);
-		OUT->val[_DEW_POINT_K][i]=strtod(dmp,&dmp);
-		OUT->val[_ENHANCEMENT_FACTOR][i]=strtod(dmp,&dmp);
-		OUT->val[_MASS_MIXING_RATIO][i]=strtod(dmp,&dmp);
-		OUT->val[_MOIST_AIR_DENSITY][i]=strtod(dmp,&dmp);
-		OUT->val[_MOLE_MIXING_RATIO][i]=strtod(dmp,&dmp);
-		OUT->val[_POTENTIAL_TEMPERATURE][i]=strtod(dmp,&dmp);
-		OUT->val[_SATURATION_MIXING_RATIO][i]=strtod(dmp,&dmp);
-		OUT->val[_SATURATION_VAPOR_PRESSURE][i]=strtod(dmp,&dmp);
-		OUT->val[_SPECIFIC_HUMIDITY][i]=strtod(dmp,&dmp);
-		OUT->val[_VAPOR_PRESSURE][i]=strtod(dmp,&dmp);
-		OUT->val[_VIRTUAL_POTENTIAL_TEMPERATURE][i]=strtod(dmp,&dmp);
-		OUT->val[_VIRTUAL_TEMPERATURE][i]=strtod(dmp,&dmp);
+		dmp = line;
+		for(j=0;j<NF;j++){/* Iterate over all the standard input fields. */
+			fi = WC_field_list[j];
+			if((OUT->val[fi][i]=strtod(dmp,&dmp))==0.0){
+				if(errno==EINVAL){
+					fprintf(stderr,"Error %s reported when attempting to convert %s.\n",strerror(errno),dmp);
+					exit(-3);
+				}
+			}
+			if(dmp[0]==',')dmp++;
+			if(dmp[0]=='\n' || dmp[0]=='\0')break;
+		}
 		OUT->val[_V_WIND][i] = 1.0;
 		OUT->val[_U_WIND][i] = 1.0;
 	}
-	OUT->populated[_TEMPERATURE_K]=TRUE;
-	OUT->populated[_PRESSURE]=TRUE;
-	OUT->populated[_RELATIVE_HUMIDITY]=TRUE;
-	OUT->populated[_ABSOLUTE_HUMIDITY]=TRUE;
-	OUT->populated[_DEW_POINT_K]=TRUE;
-	OUT->populated[_ENHANCEMENT_FACTOR]=TRUE;
-	OUT->populated[_MASS_MIXING_RATIO]=TRUE;
-	OUT->populated[_MOIST_AIR_DENSITY]=TRUE;
-	OUT->populated[_MOLE_MIXING_RATIO]=TRUE;
-	OUT->populated[_POTENTIAL_TEMPERATURE]=TRUE;
-	OUT->populated[_SATURATION_MIXING_RATIO]=TRUE;
-	OUT->populated[_SATURATION_VAPOR_PRESSURE]=TRUE;
-	OUT->populated[_SPECIFIC_HUMIDITY]=TRUE;
-	OUT->populated[_VAPOR_PRESSURE]=TRUE;
-	OUT->populated[_VIRTUAL_POTENTIAL_TEMPERATURE]=TRUE;
-	OUT->populated[_VIRTUAL_TEMPERATURE]=TRUE;
-	OUT->populated[_U_WIND]=TRUE;
-	OUT->populated[_V_WIND]=TRUE;
+	for(j=0;j<NF;j++){
+		fi = WC_field_list[j];
+		OUT->populated[fi]=TRUE;
+	}
+	OUT->populated[_U_WIND] = OUT->populated[_V_WIND]=TRUE;
 
 	setAllFields(OUT);
 	/* Fill in the remaining fields */
@@ -123,12 +201,13 @@ double compare(WEATHER_CONVERSION_VECTOR *TST, WEATHER_CONVERSION_VECTOR *STD){
 	WEATHER_CONVERTER_FIELD ri;
 
 	for(ri=0;ri<_N_WEATHER_FIELDS;ri++){
-		if((tmpError=relError(TST->val[ri],STD->val[ri],TST->N)) > 1.0e-6)
-			printf("A high relative error, %lf, was seen for field # %d, %s.\n",tmpError,ri,_weather_converter_field_names[ri]);
+		if(ri==_OTHER_INPUT)continue;
+		if((tmpError=relError(TST->val[ri],STD->val[ri],TST->N)) > ((double)TST->N)*1.0e-6)
+			printf("A high relative error, %lf, was seen for field # %d, %s.\n",tmpError/((double)TST->N),ri,_weather_converter_field_names[ri]);
 		totalErr += tmpError;
 	}
 
-	return totalErr/(double)TST->N/(double)_N_WEATHER_FIELDS;
+	return totalErr/(double)_N_WEATHER_FIELDS/(double)TST->N;
 }
 
 double relError(double *a, double *b, unsigned int N){
@@ -159,10 +238,7 @@ double relError(double *a, double *b, unsigned int N){
 	}
 }
 
-double _relError(double a, double b){
-	if((a==0.0)&&(b==0.0)) return 0.0;
-	return pow((a-b) / (fabs(a)>fabs(b)?a:b),2.0);
-}
+
 void setTestVector(WEATHER_CONVERSION_VECTOR *TST, WEATHER_CONVERSION_VECTOR *STD, WEATHER_CONVERTER_FIELD field){
 	WEATHER_CONVERTER_FIELD ri;
 	for(ri=0;ri<_N_WEATHER_FIELDS;ri++)

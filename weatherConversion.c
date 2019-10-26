@@ -514,11 +514,12 @@ double calcSpecificHumidity(double mr){
 	/* convert back to g/kg*/
 	return sh*1000.0;
 }
-double calcMixingRatio(double P, double vp){
+double calcMassMixingRatio(double P, double vp){
 	/*     %CALCMIXINGRATIO Calculate mixing ratio
     % Calculate mixing ratio for a specified pressure and temperature. For
     % saturated mixing ratios use temperature. For standard mixing ratios
-    % use dewpoint.
+    % use dewpoint. This may become unstable in rare cases where the
+    % pressure equals the vapor pressure.
     %
     % Inputs:
     %   P    Atmospheric pressure (mb or hPa)
@@ -530,6 +531,9 @@ double calcMixingRatio(double P, double vp){
     % References:
     %   http://www.wrh.noaa.gov/slc/projects/wxcalc/formulas/mixingRatio.pdf*/
 	double epsilon = 0.62197;
+
+	/* Pressure should always be greater than vapor pressure */
+	P = P > 1.00001*vp ? P:vp*1.00001;
 
 	return 1000.0*epsilon*vp/(P-vp);
 }
@@ -545,7 +549,6 @@ double calcMMRfromAbsoluteHumidity(double P, double T, double a){
 	for(i=0;i<6;i++){ /* Six iterations of newton's method */
 		num = a- moistAirNumberDensity(T,P,xv)*xv*Mv;
 		denom = dBeta_dxv(T,P,xv)*xv*Mv + moistAirNumberDensity(T,P,xv)*Mv;
-		if (is_unstable(num,denom,xv)) break;
 		xv = xv + num/denom;
 	}
 	return xv;
@@ -825,9 +828,7 @@ WEATHER_CONVERSION_ERROR setAllFields(WEATHER_CONVERSION_VECTOR *WX){
 		if(WX->populated[_RELATIVE_HUMIDITY]==FALSE){
 			for(i=0;i<WX->N;i++)
 					WX->val[_RELATIVE_HUMIDITY][i] =
-							100.0*WX->val[_MASS_MIXING_RATIO][i]*WX->val[_PRESSURE][i]/
-							(622.0*WX->val[_SATURATION_VAPOR_PRESSURE][i]+
-							WX->val[_MASS_MIXING_RATIO][i]*WX->val[_SATURATION_VAPOR_PRESSURE][i]);
+							100.0*WX->val[_MASS_MIXING_RATIO][i]/WX->val[_SATURATION_MIXING_RATIO][i];
 		}
 		WX->populated[_RELATIVE_HUMIDITY] = TRUE;
 		break;
@@ -879,7 +880,7 @@ WEATHER_CONVERSION_ERROR setAllFields(WEATHER_CONVERSION_VECTOR *WX){
 				WX->val[_MASS_MIXING_RATIO][i] = WX->val[_SPECIFIC_HUMIDITY][i]/(1.0-WX->val[_SPECIFIC_HUMIDITY][i]/1000.0);
 		if(WX->populated[_RELATIVE_HUMIDITY]==FALSE)
 			for(i=0;i<WX->N;i++){
-				if (WX->val[_SPECIFIC_HUMIDITY][i] > 0.99)
+				/*if (WX->val[_SPECIFIC_HUMIDITY][i] > 0.99)
 					WX->val[_RELATIVE_HUMIDITY][i] = estRHfromSH(
 							WX->val[_SPECIFIC_HUMIDITY][i],
 							WX->val[_TEMPERATURE_K][i],
@@ -888,10 +889,9 @@ WEATHER_CONVERSION_ERROR setAllFields(WEATHER_CONVERSION_VECTOR *WX){
 							WX->val[_SATURATION_VAPOR_PRESSURE][i],
 							WX->val[_ENHANCEMENT_FACTOR][i],
 							100);
-				else
+				else*/
 					WX->val[_RELATIVE_HUMIDITY][i] =
-						100.0*WX->val[_MASS_MIXING_RATIO][i]*WX->val[_PRESSURE][i]/
-						(622.0 + WX->val[_MASS_MIXING_RATIO][i])/WX->val[_SATURATION_VAPOR_PRESSURE][i];
+						100.0*WX->val[_MASS_MIXING_RATIO][i]/WX->val[_SATURATION_MIXING_RATIO][i];
 
 			}
 		WX->populated[_MASS_MIXING_RATIO] = TRUE;
@@ -1005,6 +1005,7 @@ WEATHER_CONVERSION_ERROR setTemperatures(WEATHER_CONVERSION_VECTOR *WX){
 		for(i=0;i<WX->N;i++)
 			WX->val[_SATURATION_VAPOR_PRESSURE][i] = goffGratch(WX->val[_TEMPERATURE_K][i]);
 	WX->populated[_SATURATION_VAPOR_PRESSURE] = TRUE;
+	/* Saturation mixing ratio is set with the pressures. */
 	return WEATHER_CONVERSION_SUCCESS;
 }
 WEATHER_CONVERSION_ERROR setPressures(WEATHER_CONVERSION_VECTOR *WX){
@@ -1028,11 +1029,12 @@ WEATHER_CONVERSION_ERROR setPressures(WEATHER_CONVERSION_VECTOR *WX){
 			WX->val[_ENHANCEMENT_FACTOR][i] = enhancementFactor( WX->val[_TEMPERATURE_K][i],WX->val[_PRESSURE][i]);
 	if(WX->populated[_SATURATION_MIXING_RATIO]==FALSE){
 		for(i=0;i<WX->N;i++){
-			/* If the actual pressure is less than the saturation pressure, then assume that there is no dry air. */
+			/* If the actual pressure is less than the saturation pressure, then assume that there is no dry air. * /
 			if(WX->val[_PRESSURE][i] < WX->val[_SATURATION_VAPOR_PRESSURE][i])
 				WX->val[_SATURATION_MIXING_RATIO][i] = _MY_INFINITY;
-			else
-				WX->val[_SATURATION_MIXING_RATIO][i] = 622.0*WX->val[_SATURATION_VAPOR_PRESSURE][i]/(WX->val[_PRESSURE][i]-WX->val[_SATURATION_VAPOR_PRESSURE][i]);
+			else*/
+				WX->val[_SATURATION_MIXING_RATIO][i] = calcMassMixingRatio(WX->val[_PRESSURE][i],WX->val[_SATURATION_VAPOR_PRESSURE][i]);
+						/*622.0*WX->val[_SATURATION_VAPOR_PRESSURE][i]/(WX->val[_PRESSURE][i]-WX->val[_SATURATION_VAPOR_PRESSURE][i]);*/
 		}
 	}
 
@@ -1169,13 +1171,8 @@ WEATHER_CONVERSION_ERROR humidityConversion(WEATHER_CONVERSION_VECTOR *WX){
 		WX->populated[_MOIST_AIR_DENSITY]=TRUE;
 	}
 	if(WX->populated[_MASS_MIXING_RATIO]==FALSE){
-		for(i=0;i<WX->N;i++){
-			if(WX->val[_PRESSURE][i] > WX->val[_VAPOR_PRESSURE][i])
-				WX->val[_MASS_MIXING_RATIO][i] = 622.0*WX->val[_VAPOR_PRESSURE][i]/(WX->val[_PRESSURE][i]-WX->val[_VAPOR_PRESSURE][i]);
-			else
-				WX->val[_MASS_MIXING_RATIO][i] = _MY_INFINITY;
-		}
-
+		for(i=0;i<WX->N;i++)
+				WX->val[_MASS_MIXING_RATIO][i] = WX->val[_RELATIVE_HUMIDITY][i]*WX->val[_SATURATION_MIXING_RATIO][i]/100.0;
 		WX->populated[_MASS_MIXING_RATIO]=TRUE;
 	}
 	if(WX->populated[_VIRTUAL_TEMPERATURE]==FALSE){
@@ -1186,7 +1183,10 @@ WEATHER_CONVERSION_ERROR humidityConversion(WEATHER_CONVERSION_VECTOR *WX){
 	}
 	if(WX->populated[_SPECIFIC_HUMIDITY]==FALSE){
 		for(i=0;i<WX->N;i++)
-			WX->val[_SPECIFIC_HUMIDITY][i] = 1000.0*WX->val[_ABSOLUTE_HUMIDITY][i]/WX->val[_MOIST_AIR_DENSITY][i];
+			WX->val[_SPECIFIC_HUMIDITY][i] = calcSpecificHumidity(WX->val[_MASS_MIXING_RATIO][i]) ;
+					/* TODO This section was included at some point, but I don't know why.
+					 * If it does'n appear to mess up anything else, we can remove. LRB Oct 25, 2019.
+					 * 1000.0*WX->val[_ABSOLUTE_HUMIDITY][i]/WX->val[_MOIST_AIR_DENSITY][i];*/
 		WX->populated[_SPECIFIC_HUMIDITY]=TRUE;
 	}
 	if(WX->populated[_VIRTUAL_POTENTIAL_TEMPERATURE]==FALSE){
@@ -1283,3 +1283,7 @@ double standardAtmosPressureAtAltitude(double Z) {
 	/* Return the value in meters instead of km. */
 	return prs[i-1]*exp(gamma*(Z - alt[i-1]));
 }
+double _relError(double a, double b){
+	if((a==0.0)&&(b==0.0)) return 0.0;
+	return pow((a-b) / (fabs(a)>fabs(b)?a:b),2.0);
+};
