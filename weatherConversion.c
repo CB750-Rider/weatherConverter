@@ -162,7 +162,7 @@ char *_weather_converter_field_units[_N_WEATHER_FIELDS] = {
 													"K", /*10*/
 													"mb", /*11*/
 													"g/kg", /*12*/
-													" ", /*13*/
+													"<unitless>", /*13*/
 													"%", /*14*/
 													"mb", /*15*/
 													"mb", /*16*/
