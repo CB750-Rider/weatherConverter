@@ -1,3 +1,8 @@
 *.csv
 *~
 *.swp
+*.o
+*.txt
+*.a
+*.so
+testWeatherConversion
