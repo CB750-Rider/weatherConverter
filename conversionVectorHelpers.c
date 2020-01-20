@@ -21,7 +21,7 @@
  * SOFTWARE. 
  *
  *  Created on: Aug 11, 2016
- *      Author: Dr. Lee Burchett Booz | Allen Hamilton
+ *      Author: Dr. Lee Burchett 
  *
  *  Last Modified: 6 June, 2017
  * 
