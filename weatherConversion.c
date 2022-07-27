@@ -48,6 +48,7 @@ SOFTWARE.
 #include <stdio.h>
 
 static int is_unstable(double num,double denom, double X0);
+WEATHER_CONVERSION_ERROR _weather_converter_global_return;
 
 char *_weather_converter_field_names[_N_WEATHER_FIELDS] = {
 													"Temperature C", /*0*/
