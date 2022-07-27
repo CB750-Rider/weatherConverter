@@ -181,15 +181,15 @@ typedef struct{
 } WEATHER_CONVERSION_VECTOR;
 
 /* Strings defined in weatherConversion.c */
-char *_weather_converter_field_names[_N_WEATHER_FIELDS];
-char *_weather_converter_field_flags[_N_WEATHER_FIELDS];
-char *_weather_converter_field_units_full[_N_WEATHER_FIELDS];
-char *_weather_converter_field_units[_N_WEATHER_FIELDS];
-char *_weather_converter_site_setting_names[_N_WEATHER_SITE_SPECIFIC_SETTINGS] ;
-char *_weather_converter_site_setting_flags[_N_WEATHER_SITE_SPECIFIC_SETTINGS];
-char *_weather_converter_site_units_full[_N_WEATHER_SITE_SPECIFIC_SETTINGS] ;
-char *_weather_converter_site_units[_N_WEATHER_SITE_SPECIFIC_SETTINGS];
-double _weather_converter_site_defaults[_N_WEATHER_SITE_SPECIFIC_SETTINGS];
+extern char *_weather_converter_field_names[_N_WEATHER_FIELDS];
+extern char *_weather_converter_field_flags[_N_WEATHER_FIELDS];
+extern char *_weather_converter_field_units_full[_N_WEATHER_FIELDS];
+extern char *_weather_converter_field_units[_N_WEATHER_FIELDS];
+extern char *_weather_converter_site_setting_names[_N_WEATHER_SITE_SPECIFIC_SETTINGS] ;
+extern char *_weather_converter_site_setting_flags[_N_WEATHER_SITE_SPECIFIC_SETTINGS];
+extern char *_weather_converter_site_units_full[_N_WEATHER_SITE_SPECIFIC_SETTINGS] ;
+extern char *_weather_converter_site_units[_N_WEATHER_SITE_SPECIFIC_SETTINGS];
+extern double _weather_converter_site_defaults[_N_WEATHER_SITE_SPECIFIC_SETTINGS];
 /* Functions defined in weatherConversion.c */
 double latitude_gravity(double lat);
 double latitude_earth_radius(double lat);
@@ -242,9 +242,9 @@ WEATHER_CONVERSION_ERROR setHeights(WEATHER_CONVERSION_VECTOR *WX);
 WEATHER_CONVERSION_ERROR setWinds(WEATHER_CONVERSION_VECTOR *WX);
 WEATHER_CONVERSION_ERROR humidityConversion(WEATHER_CONVERSION_VECTOR *WX);
 /* Variables required for error reporting. Definitions are in conversionVectorHelpers.c */
-char *_weather_converter_error_messages[N_WEATHER_CONVERSION_ERRORS];
-WEATHER_CONVERSION_ERROR _weather_converter_global_return;
-FILE *weather_converter_error_stream;
+extern char *_weather_converter_error_messages[N_WEATHER_CONVERSION_ERRORS];
+extern WEATHER_CONVERSION_ERROR _weather_converter_global_return;
+extern FILE *weather_converter_error_stream;
 /* Functions in conversionVectorHelpers.c */
 void reportWeatherConversionError(char *msg, ...);
 WEATHER_CONVERSION_ERROR openWeatherConversionVector(WEATHER_CONVERSION_VECTOR *WX, unsigned int N);
