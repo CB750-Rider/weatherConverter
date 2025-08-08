@@ -93,7 +93,32 @@ static void remove_vector_from_init_list(WEATHER_CONVERSION_VECTOR *WX){
 		initialized_vectors=NULL;
 	}
 }
-
+WEATHER_CONVERTER_FIELD getEnumFromFlag(const char *flag) {
+    WEATHER_CONVERTER_FIELD i;
+    for(i=0;i<_N_WEATHER_FIELDS;i++){
+        if (strcmp(flag, _weather_converter_field_flags[i]) == 0)
+            return i;
+    }
+    return -1;
+}
+const char *getFieldFlag(WEATHER_CONVERTER_FIELD wcf){
+    if((wcf < 0) || (wcf >= _N_WEATHER_FIELDS))
+        return "<UNKNOWN FIELD ENUM>";
+    return _weather_converter_field_flags[wcf];
+}
+const char *getFieldName(WEATHER_CONVERTER_FIELD wcf){
+    if((wcf < 0) || (wcf >= _N_WEATHER_FIELDS))
+        return "<UNKNOWN FIELD ENUM>";
+    return _weather_converter_field_names[wcf];
+}
+const char *getFieldUnitsAbbr(WEATHER_CONVERTER_FIELD wcf){
+    if((wcf < 0) || (wcf >= _N_WEATHER_FIELDS))
+        return "<UNKNOWN FIELD ENUM>";
+    return _weather_converter_field_units[wcf];
+}
+int get_N_WEATHER_FIELDS() {
+    return _N_WEATHER_FIELDS;
+}
 void reportWeatherConversionError(char *msg, ...){
 	/* This function prints errors to stdout by default, but this will also
 	work with other streams. */
@@ -122,8 +147,6 @@ void reportWeatherConversionError(char *msg, ...){
 	vfprintf(weather_converter_error_stream,msg,ap);
 	va_end(ap);
 }
-
-
 WEATHER_CONVERSION_ERROR openWeatherConversionVector(WEATHER_CONVERSION_VECTOR *WX, unsigned int N){
 	/* Allocate space for the weatherConversionVector. */
 	WEATHER_CONVERTER_FIELD fi;
@@ -134,17 +157,20 @@ WEATHER_CONVERSION_ERROR openWeatherConversionVector(WEATHER_CONVERSION_VECTOR *
 	WX->surfaceHeight = _weather_converter_site_defaults[_SURFACE_HEIGHT];
 	WX->surfacePressure = _weather_converter_site_defaults[_SURFACE_PRESSURE];
 	WX->latitude = _weather_converter_site_defaults[_SITE_LATITUDE];
+	WX->surfaceTemperature = _weather_converter_site_defualts[_SURFACE_TEMPERATURE];
 	for(fi=0;fi<_N_WEATHER_FIELDS;fi++){
 		WX->val[fi] = (double *)malloc(N*sizeof(double));
 		WX->allocated[fi] = TRUE;
 		WX->populated[fi] = FALSE;
 	}
+	WX->quiet = FALSE;
 	return WEATHER_CONVERSION_SUCCESS;
 }
 WEATHER_CONVERSION_ERROR freeWeatherConversionVector(WEATHER_CONVERSION_VECTOR *WX){
 	WEATHER_CONVERTER_FIELD fi;
 	for(fi=0;fi<_N_WEATHER_FIELDS;fi++){
-		free(WX->val[fi]);
+		if(WX->allocated[fi])
+			free(WX->val[fi]);
 		WX->allocated[fi] = FALSE;
 	}
 	remove_vector_from_init_list(WX);
@@ -175,6 +201,7 @@ WEATHER_CONVERSION_ERROR initializeVector(WEATHER_CONVERSION_VECTOR *WX){
 		WX->allocated[i]=FALSE;
 		WX->populated[i]=FALSE;
 	}
+	/*
 	WX->f.alloc = (WEATHER_CONVERSION_ERROR (*)(void *, unsigned int ))&openWeatherConversionVector;
 	WX->f.free = (WEATHER_CONVERSION_ERROR (*)(void *))&freeWeatherConversionVector;
 	WX->f.clear_all = (WEATHER_CONVERSION_ERROR (*)(void *))&clearAllWeatherConversionFields;
@@ -187,6 +214,7 @@ WEATHER_CONVERSION_ERROR initializeVector(WEATHER_CONVERSION_VECTOR *WX){
 	WX->f.integrate_column_water_number_density = (double(*)(void *, double, double))&integrateColumnWaterNumberDensity;
 	WX->f.integrate_column_moist_air_density = (double(*)(void *, double, double))&integrateColumnMoistAirDensity;
 	WX->f.integrate_column_moist_air_number_density = (double(*)(void *, double, double))&integrateColumnMoistAirNumberDensity;
+	TODO Bring this back or take it out */
 	if(rv==DOUBLE_INITIALIZATION_ERROR)return rv;
 	_wcCheck(add_vector_to_init_list(WX));
 	return WEATHER_CONVERSION_SUCCESS;
@@ -260,7 +288,7 @@ WEATHER_CONVERSION_ERROR changeHeight(WEATHER_CONVERSION_VECTOR *WX, double *h,W
 
 	return WEATHER_CONVERSION_SUCCESS;
 }
-WEATHER_CONVERSION_ERROR parseSiteSettingnsLine(char *line, WEATHER_CONVERSION_VECTOR *WX){
+WEATHER_CONVERSION_ERROR parseSiteSettingsLine(char *line, WEATHER_CONVERSION_VECTOR *WX){
 	/* Convenience function to read a line and look for any setting flags for the site location. */
 	SITE_SPECIFIC_SETTINGS si;
 	char *sp,*dmp;
@@ -346,4 +374,25 @@ WEATHER_CONVERSION_ERROR parseSiteSettingnsLine(char *line, WEATHER_CONVERSION_V
 	} /* End for each possible site setting */
 
 	return WEATHER_CONVERSION_SUCCESS;
-} /* End function */
+} 
+void setQuiet(WEATHER_CONVERSION_VECTOR *WX){
+    WX->quiet = TRUE;
+}
+void setNotQuiet(WEATHER_CONVERSION_VECTOR *WX){
+    WX->quiet = FALSE;
+}
+void printWeatherConversionVectorMetadata(WEATHER_CONVERSION_VECTOR *WX){
+    int i;
+    printf("Weather Conversion Vector Metadata:\n");
+    printf(" N: %u\n", WX->N);
+    printf(" allocated: ");
+    for(i=0;i<_N_WEATHER_FIELDS;i++) printf(", %u", WX->allocated[i]);
+    printf(" populated: ");
+    for(i=0;i<_N_WEATHER_FIELDS;i++) printf(", %u", WX->populated[i]);
+    printf("\n standandPressure: %lf mb\n", WX->standandPressure);
+    printf(" carbon dioxide concentration: %lf ppm\n", WX->xCO2);
+    prnitf(" latitude: %lf degrees North\n", WX->latitude);
+    printf(" surfaceHeight: %lf m MSL\n", WX->surfaceHeight);
+    printf(" surfacePressure: %lf mb\n", WX->surfacePressure);
+    printf(" surfaceTemperature: %lf K\n", WX->surfaceTemperature);
+}/* End function */
