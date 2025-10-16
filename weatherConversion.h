@@ -133,6 +133,7 @@ typedef enum{
 	_SITE_LATITUDE,  /* In degrees, default is 35 */
 	_SURFACE_HEIGHT, /* Elevation in meters above mean sea level, default is 0 */
 	_SURFACE_PRESSURE, /* Surface pressure at 0 m AMSL in mb, default is 1013.25 */
+	_SURFACE_TEMPERATURE, /* Surface temperature, default is 273.15 K (0° C)*/
 	_N_WEATHER_SITE_SPECIFIC_SETTINGS
 } SITE_SPECIFIC_SETTINGS;
 
@@ -177,6 +178,7 @@ typedef struct{
 	double surfaceHeight; /* Above mean sea level, in meters */
 	double surfacePressure; /* in mb */
 	double surfaceTemperature; /* in Kelvin */
+	int quiet; /* Verbosity flag */
     WEATHER_CONVERSION_FUNCTIONS f; /* Reference available functions */
 } WEATHER_CONVERSION_VECTOR;
 
@@ -257,4 +259,5 @@ WEATHER_CONVERSION_ERROR changePressures(WEATHER_CONVERSION_VECTOR *WX, double *
 WEATHER_CONVERSION_ERROR changeHumidity(WEATHER_CONVERSION_VECTOR *WX, double *h,  WEATHER_CONVERTER_FIELD fi);
 WEATHER_CONVERSION_ERROR changeHeight(WEATHER_CONVERSION_VECTOR *WX, double *h,WEATHER_CONVERTER_FIELD fi);
 WEATHER_CONVERSION_ERROR parseSiteSettingnsLine(char *line, WEATHER_CONVERSION_VECTOR *WX);
-#endif /* WEATHERCONVERSION_H_ */
+
+#endif // WEATHERCONVERSION_H_ 

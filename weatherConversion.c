@@ -215,7 +215,8 @@ double _weather_converter_site_defaults[_N_WEATHER_SITE_SPECIFIC_SETTINGS] = {
 		390.0, /* CO2 ppm */
 		35.0, /* Site Latitutde */
 		0.0, /* Site surface elevation AMSL*/
-		1013.25 /* Surface pressure */
+		1013.25, /* Surface pressure */
+		273.15 /* Surface temperature */
 };
 int is_unstable(double num,double denom,double X0){
 	/* Check for numerical stability of division */

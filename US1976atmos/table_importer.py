@@ -13,7 +13,7 @@ import numpy as np
 from typing import List, Tuple
 import matplotlib.pyplot as plt
 
-root_data_path = "/path/to/folders"
+root_data_path = os.getcwd()
 
 table_8 = \
     {'name': 'table_8',
@@ -24,7 +24,7 @@ table_8 = \
      'columns': ['altitude Z', 'altitude H', 'N2', 'O', 'O2', 'Ar', 'He', 'H'],
      'column_units': ['m', 'm', 'per m^3', 'per m^3', 'per m^3', 'per m^3',
                       'per m^3', 'per m^3'],
-     'pages': [225,230],
+     'pages': [225, 230],
     }
 
 table_1 = \
@@ -37,7 +37,7 @@ table_1 = \
                  'Molecular Temperature K', 'Pressure mb', 'Pressure Torr',
                  'Pressure Ratio', 'Mass Density', 'Density Ratio'],
      'column_units': ['m', 'm', 'K', 'C', 'K', 'mb', 'Torr', '', 'kg/m^3', ''],
-     'pages': [65,88],
+     'pages': [65, 88],
     }
 
 tables = [table_8, table_1]
@@ -59,7 +59,7 @@ def read_pages(table: dict) -> Tuple[List[np.ndarray], List[str]]:
             file_names_out.append(fname)
     except KeyError:
         for fi in range(table['file_count']):
-            fname = f"{table['filename_base']}{fi}.txt"
+            fname = f"{table['filename_base']}{fi+1}.txt"
             out.append(_read_page(os.path.join(root_data_path,
                                                table['folder_name'],
                                                fname)))
@@ -76,11 +76,19 @@ def save_data(merged_data, table):
         json.dump(table, outfile)
 
 
+def plot_data(data_sets, table, di, file_names):
+    return np.vstack(data_sets)
+
+
 if __name__ == "__main__":
     for table in tables:
         print(f"Processing {table['name']}: {table['title']}")
-        data_sets, file_names = read_pages(table)
-        # for di in range(len(table['columns'])):
-        #     merged_data = plot_data(data_sets, table, di, file_names)
+        try:
+            data_sets, file_names = read_pages(table)
+        except FileNotFoundError:
+            print("Unable to find one of the files.")
+            break
+        for di in range(len(table['columns'])):
+            merged_data = plot_data(data_sets, table, di, file_names)
         save_data(merged_data, table)
         # plt.show()
