@@ -1,10 +1,9 @@
 import numpy as np
 from scipy.interpolate import interp1d, PchipInterpolator
 import json
-import numpy as np
 from typing import List
 import pickle
-import importlib
+from importlib.resources import files
 
 
 input_file = "table_8.json"
@@ -16,27 +15,21 @@ Rstr = 8.31432e3  # N*m/(kmol*K)
 M0 = 28.9644  # kg/kmol page 9
 Na = 6.022169e26
 T7 = 186.8673  # K
-Lmb = [-6.5, 0.0, 1.0, 2.8, 0.0, -2.8 -2.0]  # Table 4 K/km
+Lmb = [-6.5, 0.0, 1.0, 2.8, 0.0, -2.8, -2.0]  # Table 4 K/km
 # Calculated form table 4
 Tbn = [288.15, 216.65, 216.65, 228.65, 270.65, 270.65, 215.65, 186.946]
 
-# load Table 8
-pkg = importlib.resources.files(__package__)
-
+_data_file = "_table_8.pickle"
 try:
-    _data_file = pkg / "data" / "_table_8.pickle"
-
-    with _data_file.open("rb") as handle:
+    with open(_data_file, "rb") as handle:
         _table_eight = pickle.load(handle)
 except FileNotFoundError:
-    _data_file = pkg / "data" / "_table_8.json"
-
-    with _data_file.open() as infile:
+    with open(input_file) as infile:
         _table_eight = json.load(infile)
-    
+
     molar_mass = [28.0134, 15.999, 15.999*2, 39.948, 4.002602, 1.008]
     # Some sums we fill in
-    z = np.asarray(_table_eight['altitude_Z'])
+    z = np.asarray(_table_eight['altitude Z'])
     _table_eight["sum_ni"] = np.zeros_like(z)
     _table_eight["sum_mass_density_g/m^3"] = np.zeros_like(z)
     for i, key in enumerate(['N2', 'O', 'O2', 'Ar', 'He', 'H']):
@@ -49,7 +42,7 @@ except FileNotFoundError:
         idx = np.isfinite(y)
         try:
             _table_eight[f'{key}_zero_under'] = z[idx][0]
-        except IndexError
+        except IndexError:
             _table_eight[f'{key}_zero_under'] = -5000.0
         _table_eight[f'{key}_log10_number_density'] = PchipInterpolator(
             z[idx], y[idx], extrapolate=True
@@ -58,20 +51,21 @@ except FileNotFoundError:
             z[idx], y[idx]*molar_mass[i], extrapolate=True
         )
 
-    _table_eight[f'{key}_log10_sum_ni_z'] = PchipInterpolator(
+    _table_eight['log10_sum_ni_z'] = PchipInterpolator(
         z, np.log10(_table_eight["sum_ni"]), extrapolate=True
     )
-    _table_eight[f'{key}_log10_sum_rho_z'] = PchipInterpolator(
+    _table_eight['log10_sum_rho_z'] = PchipInterpolator(
         z, np.log10(_table_eight["sum_mass_density_g/m^3"]), 
         extrapolate=True
     )
-        
-    _data_file = pkg / "data" / "_table_8.pickle"
 
-    with _data_file.open("wb") as handle:
+    _data_file = "_table_8.pickle"
+
+    with open(_data_file, "wb") as handle:
         pickle.dump(_table_eight, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-    del(z)
+    del z
+
 
 def variable_string(v_name: str, data: List[float]) -> str:
     x_str = [str(x) for x in data]
@@ -89,6 +83,7 @@ def Z_to_H(Z: np.ndarray) -> np.ndarray:
     return (r0*Z)/(r0+Z)
 
 H8 = [79, 79.5, 80, 80.5, 81, 81.5, 82, 82.5, 83, 83.5, 84, 84.5]
+
 mr8 = [1.0,
        0.999996,
        0.999988,
@@ -107,12 +102,13 @@ MtoM0_H = PchipInterpolator(H8, mr8)
 H_b = np.asarray([0, 11, 20, 32, 47, 51, 71, 84.8520])
 T_b = [288.15]
 for i, lapse_rate in enumerate([-6.5, 0.0, 1.0, 2.8, 0.0, -2.8, -2.0]):
-    T_b.append(T_b[i] + lapse_rate*(H_b[i_1] - H_b[i]))
+    T_b.append(T_b[i] + lapse_rate*(H_b[i+1] - H_b[i]))
 
 t_H_0_79 = interp1d(H_b, T_b, kind='linear', bounds_error=False,
                     fill_value='extrapolate')
 
 T1000 = 1000
+
 
 def t_K_79_h86(H: np.ndarray) -> np.ndarray:
     return t_H_0_79(H) * MtoM0_H(H)
@@ -280,25 +276,25 @@ def _to_P_Z(H: np.ndarray) -> np.ndarray:
 def p_H(H: np.ndarray) -> np.ndarray:
     h86 = Z_to_H(86)
     hm5 = Z_to_H(-5)
-    return np.piecewise(H, [H < hm5,                            #1
-                            np.logical_and(hm5 <= H, H < 11),   #2
-                            np.logical_and(11 <= H, H < 20),    #3
-                            np.logical_and(20 <= H, H < 32),    #4
-                            np.logical_and(32 <= H, H < 47),    #5
-                            np.logical_and(47 <= H, H < 51),    #6
-                            np.logical_and(51 <= H, H < 71),    #7
-                            np.logical_and(71 <= H, H < h86),   #8
-                            H >= h86,                           #9    
+    return np.piecewise(H, [H < hm5,                            # 1
+                            np.logical_and(hm5 <= H, H < 11),   # 2
+                            np.logical_and(11 <= H, H < 20),    # 3
+                            np.logical_and(20 <= H, H < 32),    # 4
+                            np.logical_and(32 <= H, H < 47),    # 5
+                            np.logical_and(47 <= H, H < 51),    # 6
+                            np.logical_and(51 <= H, H < 71),    # 7
+                            np.logical_and(71 <= H, H < h86),   # 8
+                            H >= h86,                           # 9    
                             ],
-                            [0,     #1
-                             _p_H0, #2
-                             _p_H1, #3
-                             _p_H2, #4
-                             _p_H3, #5
-                             _p_H4, #6
-                             _p_H5, #7
-                             _p_H6, #8
-                             _to_P_Z#9
+                            [0,       # 1
+                             _p_H0,   # 2
+                             _p_H1,   # 3
+                             _p_H2,   # 4
+                             _p_H3,   # 5
+                             _p_H4,   # 6
+                             _p_H5,   # 7
+                             _p_H6,   # 8
+                             _to_P_Z  # 9
                             ])
     # I'm the only function thta should call _to_P_Z
 
@@ -315,7 +311,7 @@ def p_Z(Z: np.ndarray) -> np.ndarray:
 if __name__ == "__main__":
     with open(input_file) as infile:
         data = json.load(infile)
-    
+
     Z = np.asarray(data['altitude Z'])
 
     pressures = p_Z(Z/1000.0)
@@ -326,5 +322,5 @@ if __name__ == "__main__":
         for i, key in enumerate(['N2','O','O2','Ar','He','H']):
             x = [x * 1000 / Na for x in data[key]]
             outfile.write(variable_string(key, x))
-        
+
     print("Task Complete")

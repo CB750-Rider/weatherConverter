@@ -157,7 +157,7 @@ WEATHER_CONVERSION_ERROR openWeatherConversionVector(WEATHER_CONVERSION_VECTOR *
 	WX->surfaceHeight = _weather_converter_site_defaults[_SURFACE_HEIGHT];
 	WX->surfacePressure = _weather_converter_site_defaults[_SURFACE_PRESSURE];
 	WX->latitude = _weather_converter_site_defaults[_SITE_LATITUDE];
-	WX->surfaceTemperature = _weather_converter_site_defualts[_SURFACE_TEMPERATURE];
+	WX->surfaceTemperature = _weather_converter_site_defaults[_SURFACE_TEMPERATURE];
 	for(fi=0;fi<_N_WEATHER_FIELDS;fi++){
 		WX->val[fi] = (double *)malloc(N*sizeof(double));
 		WX->allocated[fi] = TRUE;
@@ -389,9 +389,9 @@ void printWeatherConversionVectorMetadata(WEATHER_CONVERSION_VECTOR *WX){
     for(i=0;i<_N_WEATHER_FIELDS;i++) printf(", %u", WX->allocated[i]);
     printf(" populated: ");
     for(i=0;i<_N_WEATHER_FIELDS;i++) printf(", %u", WX->populated[i]);
-    printf("\n standandPressure: %lf mb\n", WX->standandPressure);
+    printf("\n standandPressure: %lf mb\n", WX->standardPressure);
     printf(" carbon dioxide concentration: %lf ppm\n", WX->xCO2);
-    prnitf(" latitude: %lf degrees North\n", WX->latitude);
+    printf(" latitude: %lf degrees North\n", WX->latitude);
     printf(" surfaceHeight: %lf m MSL\n", WX->surfaceHeight);
     printf(" surfacePressure: %lf mb\n", WX->surfacePressure);
     printf(" surfaceTemperature: %lf K\n", WX->surfaceTemperature);
