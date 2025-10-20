@@ -942,19 +942,19 @@ WEATHER_CONVERSION_ERROR setAllFields(WEATHER_CONVERSION_VECTOR *WX){
 		printf("weatherConversion.h:setAllFields() unable to set height fields.\nIntegrating column values is not possible.\n");
 	}
 	else{
-	/* Find the integrated column densities from the ground level up to the Top of the atmosphere. */
-	WX->vaporArealDensity = WX->f.integrate_column_water_density(WX,
-			                0.0,
-							WX->val[_HEIGHT_AGL][WX->N-1]);
-	WX->vaporArealNumberDensity =	WX->f.integrate_column_water_number_density(WX,
-									0.0,
-									WX->val[_HEIGHT_AGL][WX->N - 1]);
-	WX->moistAirArealDensity =	WX->f.integrate_column_moist_air_density(WX,
-								0.0,
-								WX->val[_HEIGHT_AGL][WX->N - 1]);
-	WX->moistAirArealNumberDensity =	WX->f.integrate_column_moist_air_number_density(WX,
-										0.0,
-										WX->val[_HEIGHT_AGL][WX->N - 1]);
+		/* Find the integrated column densities from the ground level up to the Top of the atmosphere. */
+		WX->vaporArealDensity = integrateColumnWaterDensity(WX, 0.0,	WX->val[_HEIGHT_AGL][WX->N-1]);
+		WX->vaporArealNumberDensity = integrateColumnWaterNumberDensity(WX,	0.0, WX->val[_HEIGHT_AGL][WX->N - 1]);
+		WX->moistAirArealDensity =	integrateColumnMoistAirDensity(WX, 0.0, WX->val[_HEIGHT_AGL][WX->N - 1]);
+		WX->moistAirArealNumberDensity = integrateColumnMoistAirNumberDensity(WX, 0.0, WX->val[_HEIGHT_AGL][WX->N - 1]);
+	}
+	/* Compute the speed of sound, if it wasn't provided. */
+	if(WX->populated[_SPEED_OF_SOUND]==FALSE){
+		if(WX->populated[_VIRTUAL_TEMPERATURE] && WX->populated[_TEMPERATURE_K] && WX->populated[_PRESSURE]){
+			for(i=0;i<WX->N;i++)
+				WX->val[_SPEED_OF_SOUND][i] = speedOfSound(WX->val[_TEMPERATURE_K][i], WX->val[_VIRTUAL_TEMPERATURE][i], WX->val[_PRESSURE][i]);
+			WX->populated[_SPEED_OF_SOUND] = TRUE;
+		}
 	}
 	return retVal;
 }
@@ -1285,6 +1285,15 @@ double standardAtmosPressureAtAltitude(double Z) {
 	/* Return the value in meters instead of km. */
 	return prs[i-1]*exp(gamma*(Z - alt[i-1]));
 }
+double speedOfSound(double T, double T_v, double P){
+	/* From Atmospheric Effects on the Speed of Sound
+	E.A. Dean, 1979 
+	*/
+
+	double T_s = 0.825*T_v + 0.174*T + 273.0 - 6e-5*T*T;
+	double c = 20.06*sqrt(T_s);
+	return c;
+};
 double _relError(double a, double b){
 	if((a==0.0)&&(b==0.0)) return 0.0;
 	return pow((a-b) / (fabs(a)>fabs(b)?a:b),2.0);
