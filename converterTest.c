@@ -70,6 +70,7 @@ int main(){
 
 	printf("Performing a self-consistency test. (Can we go forward and back).\n");
 	setUpTest(&STANDARD);
+	
 	openWeatherConversionVector(&TEST, STANDARD.N);
 	for(ri=_RELATIVE_HUMIDITY;ri<_MOIST_AIR_DENSITY;ri++){
 		printf("Now performing the conversion starting with temperature, pressure, and %s.\n",_weather_converter_field_names[ri]);
@@ -127,7 +128,7 @@ void setUpTest(WEATHER_CONVERSION_VECTOR *V){
 
 	setAllFields(V);
 
-	saveToFile(V,"temporaryHumidityTest.csv");
+	saveToFile(V, "temporaryHumidityTest.csv");
 }
 void saveToFile(WEATHER_CONVERSION_VECTOR *V, const char *fname){
 	FILE *fp;
@@ -161,7 +162,7 @@ void importFile(const char *fname, WEATHER_CONVERSION_VECTOR *OUT){
 
 	for(N=0;feof(fp)==0;N++)
 		if(fgets(line,2000,fp)==NULL){
-			printf("converterTest.c:importFile() Successfully read %d lines in %s.\n",N,fname);
+			printf("converterTest.c:importFile() Successfully read %lu lines in %s.\n",N, fname);
 			break;
 		}
 
@@ -171,7 +172,7 @@ void importFile(const char *fname, WEATHER_CONVERSION_VECTOR *OUT){
 	for(i=0;feof(fp)==0;i++){
 		if (i==N) break;
 		if(fgets(line,2000,fp)==NULL)
-			printf("converterTest.c:importFile() Error reading line %d in %s.\n",i,fname);
+			printf("converterTest.c:importFile() Error reading line %lu in %s.\n",i,fname);
 		dmp = line;
 		for(j=0;j<NF;j++){/* Iterate over all the standard input fields. */
 			fi = WC_field_list[j];
