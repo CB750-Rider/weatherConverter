@@ -41,6 +41,8 @@ double compare(WEATHER_CONVERSION_VECTOR *A, WEATHER_CONVERSION_VECTOR *B);
 double relError(double *a, double *b, unsigned int N);
 void setTestVector(WEATHER_CONVERSION_VECTOR *TST, WEATHER_CONVERSION_VECTOR *STD, WEATHER_CONVERTER_FIELD field);
 
+#define uint size_t
+
 static 	WEATHER_CONVERTER_FIELD WC_field_list[] = {
 		_TEMPERATURE_K,
 		_PRESSURE,
@@ -152,7 +154,7 @@ void saveToFile(WEATHER_CONVERSION_VECTOR *V, const char *fname){
 void importFile(const char *fname, WEATHER_CONVERSION_VECTOR *OUT){
 	FILE *fp;
 	fp = fopen(fname,"r");
-	uint N,i;
+	uint N, i;
 	char line[2000],*dmp;
 	uint j,NF=(uint)sizeof( WC_field_list)/sizeof(WEATHER_CONVERTER_FIELD);
 	WEATHER_CONVERTER_FIELD fi;
