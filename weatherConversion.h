@@ -107,7 +107,8 @@ typedef enum {
 	_GEOPOTENTIAL_HEIGHT, /* 27 in meters */
 	_HEIGHT_AGL, /* 28 in meters */
 	_HEIGHT_AMSL, /* 29 in meters */
-	_OTHER_INPUT, /* 30 Anything else. This should be the last enum before _N_WEATHER_FIELDS. */
+	_SPEED_OF_SOUND, /* 30 in meters / second */
+	_OTHER_INPUT, /* 31 Anything else. This should be the last enum before _N_WEATHER_FIELDS. */
 	_N_WEATHER_FIELDS
 } WEATHER_CONVERTER_FIELD;
 
@@ -137,6 +138,7 @@ typedef enum{
 	_N_WEATHER_SITE_SPECIFIC_SETTINGS
 } SITE_SPECIFIC_SETTINGS;
 
+/*
 typedef struct{
 	WEATHER_CONVERSION_ERROR (*alloc)(void *WEATHER_CONVERSION_VECTOR, unsigned int size);
 	WEATHER_CONVERSION_ERROR (*free) (void *WEATHER_CONVERSION_VECTOR);
@@ -162,6 +164,7 @@ typedef struct{
 	double(*integrate_column_moist_air_density)(void *WEATHER_CONVERSION_VECTOR, double z0, double z1);
 	double(*integrate_column_moist_air_number_density)(void *WEATHER_CONVERSION_VECTOR, double z0, double z1);
 } WEATHER_CONVERSION_FUNCTIONS;
+ */
 
 typedef struct{
 	unsigned int N;
@@ -179,7 +182,6 @@ typedef struct{
 	double surfacePressure; /* in mb */
 	double surfaceTemperature; /* in Kelvin */
 	int quiet; /* Verbosity flag */
-    WEATHER_CONVERSION_FUNCTIONS f; /* Reference available functions */
 } WEATHER_CONVERSION_VECTOR;
 
 /* Strings defined in weatherConversion.c */
@@ -234,6 +236,7 @@ double integrateColumnMoistAirDensity(WEATHER_CONVERSION_VECTOR *WX, double z0, 
 double integrateColumnMoistAirNumberDensity(WEATHER_CONVERSION_VECTOR *WX, double z0, double z1);
 double standardAtmosAltitudeAtPressure(double P);
 double standardAtmosPressureAtAltitude(double Z);
+double speedOfSound(double T, double mass_mix_ratio, double P);
 double _relError(double a, double b);
 
 WEATHER_CONVERTER_FIELD presentHumidity(WEATHER_CONVERSION_VECTOR *WX);
