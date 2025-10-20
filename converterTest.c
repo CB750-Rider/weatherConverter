@@ -70,7 +70,9 @@ int main(){
 
 	printf("Performing a self-consistency test. (Can we go forward and back).\n");
 	setUpTest(&STANDARD);
+	printf("Test is now set up. Opening the conversion vector.\n");
 	openWeatherConversionVector(&TEST, STANDARD.N);
+	printf("Vector open was successful.\n");
 	for(ri=_RELATIVE_HUMIDITY;ri<_MOIST_AIR_DENSITY;ri++){
 		printf("Now performing the conversion starting with temperature, pressure, and %s.\n",_weather_converter_field_names[ri]);
 		setTestVector(&TEST,&STANDARD,ri);
@@ -102,8 +104,9 @@ void setUpTest(WEATHER_CONVERSION_VECTOR *V){
 	size_t NT = (size_t) ( (_T[2]-_T[0])/_T[1]);
 	size_t NRH = (size_t) ( (_RH[2]-_RH[0])/_RH[1]);
 
-	openWeatherConversionVector(V,(unsigned int)NP*NT*NRH);
-
+	printf("Opening the vector.");
+	openWeatherConversionVector(V, (unsigned int)NP*NT*NRH);
+	printf(" Done.")
 	for(iP=0;iP<NP;iP++){
 		for(iT=0;iT<NT;iT++){
 			T = _T[0] + (double)iT*_T[1];
