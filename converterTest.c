@@ -106,7 +106,7 @@ void setUpTest(WEATHER_CONVERSION_VECTOR *V){
 
 	printf("Opening the vector.");
 	openWeatherConversionVector(V, (unsigned int)NP*NT*NRH);
-	printf(" Done.")
+	printf(" Done.");
 	for(iP=0;iP<NP;iP++){
 		for(iT=0;iT<NT;iT++){
 			T = _T[0] + (double)iT*_T[1];
