@@ -387,7 +387,7 @@ void printWeatherConversionVectorMetadata(WEATHER_CONVERSION_VECTOR *WX){
     printf(" N: %u\n", WX->N);
     printf(" allocated: ");
     for(i=0;i<_N_WEATHER_FIELDS;i++) printf(", %u", WX->allocated[i]);
-    printf(" populated: ");
+    printf("\n populated: ");
     for(i=0;i<_N_WEATHER_FIELDS;i++) printf(", %u", WX->populated[i]);
     printf("\n standandPressure: %lf mb\n", WX->standardPressure);
     printf(" carbon dioxide concentration: %lf ppm\n", WX->xCO2);

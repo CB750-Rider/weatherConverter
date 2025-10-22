@@ -20,7 +20,7 @@ double tree_search(double *Y, double x) {
     double dp = pressures[idx+1] - pressures[idx];
     double dy = log10(Y[idx+1]) - log10(Y[idx]);
     double p = x - pressures[idx];
-    return pow(10.0, log10(Y[idx]) + p*dy/dy);
+    return pow(10.0, log10(Y[idx]) + p*dy/dp);
 }
 
 double v_tree_search(double *Y, double x) {
@@ -30,7 +30,7 @@ double v_tree_search(double *Y, double x) {
     double dp = pressures[idx+1] - pressures[idx];
     double dy = log10(Y[idx+1]) - log10(Y[idx]);
     double p = x - pressures[idx];
-    return pow(10.0, log10(Y[idx]) + p*dy/dy);
+    return pow(10.0, log10(Y[idx]) + p*dy/dp);
 }
 
 double moles_N2_P(double P) { return tree_search(N2, P); }

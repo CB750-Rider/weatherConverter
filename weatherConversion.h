@@ -37,6 +37,10 @@
 #endif
 #endif
 
+#ifndef __BASE_FILE_NAME__
+#define __BASE_FILE_NAME__ "<UNKNOWN_FILE>"
+#endif
+
 #ifndef WEATHERCONVERSION_H_
 #define WEATHERCONVERSION_H_
 
@@ -57,7 +61,8 @@ typedef enum{
 #endif
 
 #define WATER_MOLAR_MASS 18.015261322024042
-
+#define AVOGADRO_CONSTANT 6.02214076e23
+#define GAS_CONSTANT 8.314598
 /* Check for successful function completion. If there is a problem, then send an
  * error to the user. */
 #define _wcCheck(fun) do{ \
@@ -72,7 +77,7 @@ typedef enum{
 		return _weather_converter_global_return; \
 }}while(0)
 
-/* TODO Add potential temp, virt temp, virt potnl temp in F and C,
+/* TODO Add potential temp, virt temp, virt potentiall temp in F and C,
 Add Wind speed in knots 
 Add other pressure units 
 */
@@ -107,8 +112,10 @@ typedef enum {
 	_GEOPOTENTIAL_HEIGHT, /* 27 in meters */
 	_HEIGHT_AGL, /* 28 in meters */
 	_HEIGHT_AMSL, /* 29 in meters */
-	_SPEED_OF_SOUND, /* 30 in meters / second */
-	_OTHER_INPUT, /* 31 Anything else. This should be the last enum before _N_WEATHER_FIELDS. */
+	_DRY_AIR_NUMBER_DENSITY, /* 30 moles / meter^3 */
+	_DRY_AIR_DENSITY, /* 31 grams / meter^3 */
+	_SPEED_OF_SOUND, /* 32 meters / second */
+	_OTHER_INPUT, /* 33 Anything ... */
 	_N_WEATHER_FIELDS
 } WEATHER_CONVERTER_FIELD;
 
@@ -134,7 +141,7 @@ typedef enum{
 	_SITE_LATITUDE,  /* In degrees, default is 35 */
 	_SURFACE_HEIGHT, /* Elevation in meters above mean sea level, default is 0 */
 	_SURFACE_PRESSURE, /* Surface pressure at 0 m AMSL in mb, default is 1013.25 */
-	_SURFACE_TEMPERATURE, /* Surface temperature, default is 273.15 K (0° C)*/
+	_SURFACE_TEMPERATURE, /* Surface temperature in Kelvin, default is 273.15 K (0° C)*/
 	_N_WEATHER_SITE_SPECIFIC_SETTINGS
 } SITE_SPECIFIC_SETTINGS;
 
@@ -181,18 +188,18 @@ typedef struct{
 	double surfaceHeight; /* Above mean sea level, in meters */
 	double surfacePressure; /* in mb */
 	double surfaceTemperature; /* in Kelvin */
-	int quiet; /* Verbosity flag */
+	int quiet; /* Suppress warning-level messages */
 } WEATHER_CONVERSION_VECTOR;
 
 /* Strings defined in weatherConversion.c */
-extern char *_weather_converter_field_names[_N_WEATHER_FIELDS];
-extern char *_weather_converter_field_flags[_N_WEATHER_FIELDS];
-extern char *_weather_converter_field_units_full[_N_WEATHER_FIELDS];
-extern char *_weather_converter_field_units[_N_WEATHER_FIELDS];
-extern char *_weather_converter_site_setting_names[_N_WEATHER_SITE_SPECIFIC_SETTINGS] ;
-extern char *_weather_converter_site_setting_flags[_N_WEATHER_SITE_SPECIFIC_SETTINGS];
-extern char *_weather_converter_site_units_full[_N_WEATHER_SITE_SPECIFIC_SETTINGS] ;
-extern char *_weather_converter_site_units[_N_WEATHER_SITE_SPECIFIC_SETTINGS];
+extern const char *_weather_converter_field_names[_N_WEATHER_FIELDS];
+extern const char *_weather_converter_field_flags[_N_WEATHER_FIELDS];
+extern const char *_weather_converter_field_units_full[_N_WEATHER_FIELDS];
+extern const char *_weather_converter_field_units[_N_WEATHER_FIELDS];
+extern const char *_weather_converter_site_setting_names[_N_WEATHER_SITE_SPECIFIC_SETTINGS] ;
+extern const char *_weather_converter_site_setting_flags[_N_WEATHER_SITE_SPECIFIC_SETTINGS];
+extern const char *_weather_converter_site_units_full[_N_WEATHER_SITE_SPECIFIC_SETTINGS] ;
+extern const char *_weather_converter_site_units[_N_WEATHER_SITE_SPECIFIC_SETTINGS];
 extern double _weather_converter_site_defaults[_N_WEATHER_SITE_SPECIFIC_SETTINGS];
 /* Functions defined in weatherConversion.c */
 double latitude_gravity(double lat);
@@ -206,7 +213,7 @@ double CtoF(double Cent);
 double FtoC(double F);
 double CtoK(double C);
 double KtoC(double K);
-double calcDewpoint(double T, double RH, double SVP);
+double calcDewpoint(double RH, double SVP);
 double goffGratch(double T);
 double DgoffGratch_dT(double T);
 double goffGratchIce(double T);
@@ -215,12 +222,17 @@ double enhancementFactor(double T, double P);
 double calcAbsolute(double P, double T, double moleMixingRatio);
 double calcCompressibility(double P, double T, double xv);
 double calcPotentialTemperature(double T, double P, double P0, CALCULATION_DIRECTION D);
+double calcPressureFromTemperature(double P, double T, double TP, CALCULATION_DIRECTION D);
 double calcVirtualTemperature(double T, double mr, CALCULATION_DIRECTION D);
 double calcMoistAirDensity(double T, double P, double xv, double xCO2);
 double moistAirNumberDensity(double P, double T, double xv);
+double calcDryAirDensity(double T, double P, double xCO2);
+double calcPressure(double T, double rho);
+double dryAirNumberDensity(double P, double T);
 double dZ_dxv(double T, double p, double x);
 double calcSpecificHumidity(double mr);
 double calcMassMixingRatio(double P, double vp);
+double calcVaporPressureFromMassMixingRatio(double P, double mr);
 double calcMMRfromAbsoluteHumidity(double P, double T, double a);
 double calcSHfromRH(double T, double P, double xCO2, double SVP, double RH, double ef);
 double estRHfromSH(double SH, double T, double P, double xCO2, double SVP, double ef, double RH);
@@ -251,6 +263,11 @@ extern char *_weather_converter_error_messages[N_WEATHER_CONVERSION_ERRORS];
 extern WEATHER_CONVERSION_ERROR _weather_converter_global_return;
 extern FILE *weather_converter_error_stream;
 /* Functions in conversionVectorHelpers.c */
+WEATHER_CONVERTER_FIELD getEnumFromFlag(const char *flag);
+const char *getFieldFlag(WEATHER_CONVERTER_FIELD wcf);
+const char *getFieldName(WEATHER_CONVERTER_FIELD wcf);
+const char *getFieldUnitsAbbr(WEATHER_CONVERTER_FIELD wcf);
+int get_N_WEATHER_FIELDS();
 void reportWeatherConversionError(char *msg, ...);
 WEATHER_CONVERSION_ERROR openWeatherConversionVector(WEATHER_CONVERSION_VECTOR *WX, unsigned int N);
 WEATHER_CONVERSION_ERROR freeWeatherConversionVector(WEATHER_CONVERSION_VECTOR *WX);
@@ -262,5 +279,16 @@ WEATHER_CONVERSION_ERROR changePressures(WEATHER_CONVERSION_VECTOR *WX, double *
 WEATHER_CONVERSION_ERROR changeHumidity(WEATHER_CONVERSION_VECTOR *WX, double *h,  WEATHER_CONVERTER_FIELD fi);
 WEATHER_CONVERSION_ERROR changeHeight(WEATHER_CONVERSION_VECTOR *WX, double *h,WEATHER_CONVERTER_FIELD fi);
 WEATHER_CONVERSION_ERROR parseSiteSettingnsLine(char *line, WEATHER_CONVERSION_VECTOR *WX);
+void setQuiet(WEATHER_CONVERSION_VECTOR *WX);
+void setNotQuiet(WEATHER_CONVERSION_VECTOR *WX);
+void printWeatherConversionVectorMetadata(WEATHER_CONVERSION_VECTOR *WX);
 
-#endif // WEATHERCONVERSION_H_ 
+/* Functions defined in US1976_Standard_Atmos_Table_8.c */
+double moles_N2_P(double P);
+double moles_O_P(double P);
+double moles_O2_P(double P);
+double moles_Ar_P(double P);
+double moles_He_P(double P);
+double moles_H_P(double P);
+
+#endif /* WEATHERCONVERSION_H_ */

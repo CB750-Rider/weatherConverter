@@ -9,3 +9,10 @@ testWeatherConversion
 *.vs
 .vscode
 *.obj
+*.orig
+*.dll
+*.ilk
+*.lib
+*.pdb
+*.exe
+
