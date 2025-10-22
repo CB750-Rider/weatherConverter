@@ -50,10 +50,10 @@ SOFTWARE.
 static int is_unstable(double num,double denom, double X0);
 WEATHER_CONVERSION_ERROR _weather_converter_global_return;
 
-char *_weather_converter_field_names[_N_WEATHER_FIELDS] = {
-													"Temperature C", /*0*/
-													"Temperature K", /*1*/
-													"Temperature F", /*2*/
+const char *_weather_converter_field_names[_N_WEATHER_FIELDS] = {
+													"Temperature", /*0*/
+													"Temperature", /*1*/
+													"Temperature", /*2*/
 													"U wind", /*3*/
 													"V wind", /*4*/
 													"Wind Speed", /*5*/
@@ -81,9 +81,12 @@ char *_weather_converter_field_names[_N_WEATHER_FIELDS] = {
 													"Geopotential Height", /*27*/
 													"Height Above Ground Level", /*28*/
 													"Height Above Mean Sea Level", /*29*/
-													"Other Input Field"/*30*/};
+													"Dry Air Number Density", /*30*/
+													"Dry Air Density", /*31*/
+													"Speed of Sound", /*32*/
+													"Other Input Field"/*33*/};
 
-char *_weather_converter_field_flags[_N_WEATHER_FIELDS] = {
+const char *_weather_converter_field_flags[_N_WEATHER_FIELDS] = {
 	"_TEMPERATURE_C", /* 0 Degrees C */
 	"_TEMPERATURE_K", /* 1 Kelvin */
 	"_TEMPERATURE_F", /* 2 Degrees F */
@@ -114,9 +117,12 @@ char *_weather_converter_field_flags[_N_WEATHER_FIELDS] = {
 	"_GEOPOTENTIAL_HEIGHT", /* 27 meters */
 	"_HEIGHT_AGL", /* 28 meters */
 	"_HEIGHT_AMSL", /* 29 meters*/
-    "_OTHER_INPUT" /* 30 For any other field */};
+	"_DRY_AIR_NUMBER_DENSITY", /* 30 moles / meter^3 */
+	"_DRY_AIR_DENSITY", /* 31 grams / meter^3 */
+	"_SPEED_OF_SOUND", /* 32 meters / second */
+    "_OTHER_INPUT" /* 33 For any other field */};
 
-char *_weather_converter_field_units_full[_N_WEATHER_FIELDS] = {
+const char *_weather_converter_field_units_full[_N_WEATHER_FIELDS] = {
 													"degrees Celsius", /*0*/
 													"Kelvin", /*1*/
 													"degrees Fahrenheit", /*2*/
@@ -147,9 +153,12 @@ char *_weather_converter_field_units_full[_N_WEATHER_FIELDS] = {
 													"meters", /*27*/
 													"meters", /*28*/
 													"meters", /*29*/
-													"undefined"/*30*/};
+													"moles / meter^3", /*30*/
+													"grams / meter^3", /*31*/
+													"meters / second", /*32*/
+													"undefined"/*33*/};
 
-char *_weather_converter_field_units[_N_WEATHER_FIELDS] = {
+const char *_weather_converter_field_units[_N_WEATHER_FIELDS] = {
 													"°C", /*0*/
 													"K", /*1*/
 													"°F", /*2*/
@@ -164,7 +173,7 @@ char *_weather_converter_field_units[_N_WEATHER_FIELDS] = {
 													"mb", /*11*/
 													"g/kg", /*12*/
 													"<unitless>", /*13*/
-													"%", /*14*/
+													"%%", /*14*/
 													"mb", /*15*/
 													"mb", /*16*/
 													"mol/mol", /*17*/
@@ -180,35 +189,42 @@ char *_weather_converter_field_units[_N_WEATHER_FIELDS] = {
 													"m", /*27*/
 													"m", /*28*/
 													"m", /*29*/
-													"----"/*30*/};
+													"mol/m^3", /*30*/
+													"g/m^3", /*31*/
+													"m/s", /*32*/
+													"----"/*33*/};
 
-char *_weather_converter_site_setting_names[_N_WEATHER_SITE_SPECIFIC_SETTINGS]  = {
+const char *_weather_converter_site_setting_names[_N_WEATHER_SITE_SPECIFIC_SETTINGS]  = {
 		"Standard Pressure",
 		"CO2 Parts Per Million",
 		"Latitude",
 		"Surface Height AMSL",
-		"Surface Pressure"
+		"Surface Pressure",
+		"Surface Temperature"
 };
-char *_weather_converter_site_setting_flags[_N_WEATHER_SITE_SPECIFIC_SETTINGS] = {
+const char *_weather_converter_site_setting_flags[_N_WEATHER_SITE_SPECIFIC_SETTINGS] = {
 		"_STANDARD_PRESSURE", /* Standard pressure to use (in mb) default is 1000 */
 		"_XCO2", /* CO2 mole mixing ratio in ppm default is 390.0*/
 		"_SITE_LATITUDE",  /* In degrees, default is 35 */
 		"_SURFACE_HEIGHT", /* Elevation in meters above mean sea level, default is 0 */
-		"_SURFACE_PRESSURE"
+		"_SURFACE_PRESSURE", /* Surface pressure at 0 m AMSL in mb, default is 1013.25 */
+		"_SURFACE_TEMPERATURE" /* Surface pressure at 0 m AMSL in mb, default is 1013.25 */
 };
-char *_weather_converter_site_units_full[_N_WEATHER_SITE_SPECIFIC_SETTINGS] = {
+const char *_weather_converter_site_units_full[_N_WEATHER_SITE_SPECIFIC_SETTINGS] = {
 		"millibars",
 		"parts per million",
 		"degrees latitutude",
 		"meters above mean sea level",
-		"millibars"
+		"millibars",
+		"Kelvin"
 };
-char *_weather_converter_site_units[_N_WEATHER_SITE_SPECIFIC_SETTINGS] = {
+const char *_weather_converter_site_units[_N_WEATHER_SITE_SPECIFIC_SETTINGS] = {
 		"mb",
 		"ppm",
 		"deg",
 		"m",
-		"mb"
+		"mb",
+		"K"
 };
 double _weather_converter_site_defaults[_N_WEATHER_SITE_SPECIFIC_SETTINGS] = {
 		1000.0, /* Standard pressure */
@@ -271,11 +287,11 @@ double CtoK(double C){
 double KtoC(double K){
 	return K - 273.15;
 }
-double calcDewpoint(double T, double RH, double SVP){
+double calcDewpoint(double RH, double SVP){
 	/* Based on the method presented by NOAA,
 	 * http://www.srh.noaa.gov/images/epz/wxcalc/wetBulbTdFromRh.pdf
 	 *  finds the dewpoint in Kelvin using:
-	 *  T	the temperature (K),
+	 *  T	the temperature (K), < No longer needed
 	 *  RH	relative humidity (%), and
 	 *  SVP	saturation vapor pressure (mb)
 	 *  Since this function only approximately inverts the Goff-Gratch equation,
@@ -411,7 +427,7 @@ double calcAbsolute(double T, double P, double moleMixingRatio){
 	double beta,Z; /* Number density of moist air, Compressibility of moist air */
 
 	Z = calcCompressibility(T,P,moleMixingRatio);
-	beta = P*100/Z/T/8.314598;
+	beta = P*100/Z/T/GAS_CONSTANT;
 
 	return beta*moleMixingRatio*18.01528;
 }
@@ -441,7 +457,17 @@ double calcCompressibility(double T, double P, double xv){
 	    a[2]*t*t + (b[0] + b[1]*t)*xv + (c[0] + c[1]*t)*xv*xv);
 }
 double calcPotentialTemperature(double T, double P, double P0, CALCULATION_DIRECTION D){
+	/* If CALCULATION_DIRECTION is FOREWARD (1), then this converts temperature 
+	to potential temperature. If CALCULATINO_DIRECTION is BACKWARD (-1) then
+	this converts potential temperature to temperature. */
 	return T*pow(P0/P,2.0/7.0*(double)D);
+}
+double calcPressureFromTemperature(double P, double T, double TP, CALCULATION_DIRECTION D ){
+	/* The inverse of calcPotentialTemperature, calcPressureFromTemperature takes in
+	temperature, T, and potential temperature TP and returns either standard 
+	pressure (given pressure and the FORWARD direction) or it returns pressure
+	(given standard pressure and the BACKWARD direction).*/
+	return P*pow(TP/T, 7.0/2.0*(double)D);
 }
 double calcVirtualTemperature(double T, double mr, CALCULATION_DIRECTION D){
 	/* See http://glossary.ametsoc.org/wiki/Virtual_temperature */
@@ -459,6 +485,7 @@ double calcMoistAirDensity(double T, double P, double xv, double xCO2){
 	 * xCO2	Mole mixing ratio of CO2 to dry air (ppm) */
 	double Ma,Z,R=8.314510; /* Mass of dry air, compressibility of moist air, gas constant */
 
+	if(P < 3.7338e-3) return calcDryAirDensity(T, P, xCO2);
 	Ma = 28.9635 + 12.011e-6*(xCO2 - 400.0); /* Molar mass of dry air */
 	Z = calcCompressibility(T,P,xv);
 
@@ -468,9 +495,56 @@ double moistAirNumberDensity(double T, double P, double xv){
 	/* Moist air number density in mol / m^3. Also called "beta"*/
 	double Z;
 
+	if(P < 3.7338e-3) return dryAirNumberDensity(T, P);
 	Z = calcCompressibility(T,P,xv);
 
 	return ((100*P)/(Z*T*8.314598));
+}
+double calcDryAirDensity(double T, double P, double xCO2){
+	/* Calculate the dry air density using the method from Ciddor's paper. Except above
+	 * the US1976 86 km pressure level, where the number densities change.
+	 * Inputs: 
+	 * T 	Temperature (K)
+	 * P	Pressure (mb)
+	 * xCO2 Mole mixing ratio of CO2 to dry air (ppm) */
+	double Ma, R=8.314510; /* Mass of dry air, gas constant */
+	double molar_mass[] = {28.0134, 15.999, 15.999*2.0, 39.948, 4.002602, 1.008};
+
+	if (P > 3.7338e-3){
+		Ma = 28.9635 + 12.011e-6*(xCO2 - 400); /* Molar mass of dry air */
+		return (Ma*(100*P)/T/R/AVOGADRO_CONSTANT);
+	}
+	else{
+		return (molar_mass[0] * moles_N2_P(P)
+		+ molar_mass[1] * moles_O_P(P)
+		+ molar_mass[2] * moles_O2_P(P)
+		+ molar_mass[3] * moles_Ar_P(P)
+		+ molar_mass[4] * moles_He_P(P)
+		+ molar_mass[5] * moles_H_P(P));
+	}
+}
+double dryAirNumberDensity(double T, double P){
+        /* Calculate the dry air density using the method from Ciddor's paper. Except above
+	 * the US1976 86 km pressure level, where the number densities change.
+	 * Inputs: 
+	 * T 	Temperature (K)
+	 * P	Pressure (mb)
+	 * xCO2 Mole mixing ratio of CO2 to dry air (ppm) */
+	double R=8.314510; /* gas constant */
+
+	if(P > 3.7338e-3)
+		return ((100*P)/T/R);
+	else
+		return moles_N2_P(P)
+		+ moles_O_P(P)
+		+ moles_O2_P(P)
+		+ moles_Ar_P(P)
+		+ moles_He_P(P)
+		+ moles_H_P(P);
+
+}
+double calcPressure(double T, double rho){
+	return rho*GAS_CONSTANT*T;
 }
 double dZ_dxv(double T, double p, double x){
 	/* The first derivative of compressibility with respect to molar mixing ratio */
@@ -539,8 +613,19 @@ double calcMassMixingRatio(double P, double vp){
 
 	return 1000.0*epsilon*vp/(P-vp);
 }
+double calcVaporPressureFromMassMixingRatio(double P, double mr){
+	/* Comment, needs reference
+	P is atmospheric pressure, units of vapor pressure will match pressure units
+	mr is mass mixing ratio
+	
+	Derived from  https://www.weather.gov/media/epz/wxcalc/mixingRatio.pdf */
+	if (isinf(mr)){return P;}
+
+	double epsilon = 621.97;
+	return mr*P/(epsilon + mr);
+}
 double calcMMRfromAbsoluteHumidity(double P, double T, double a){
-	double R = 8.314598; /* Gas constant */
+	double R = GAS_CONSTANT; /* Gas constant */
 	double Mv = 18.01528; /* Molar mass of H20 */
 	double beta0,p,xv,num,denom;
 	int i;
@@ -779,6 +864,7 @@ double integrateColumnMoistAirNumberDensity(WEATHER_CONVERSION_VECTOR *WX, doubl
 }
 WEATHER_CONVERTER_FIELD presentHumidity(WEATHER_CONVERSION_VECTOR *WX){
 	WEATHER_CONVERTER_FIELD fi;
+	if (WX->populated[_ABSOLUTE_HUMIDITY]) return _ABSOLUTE_HUMIDITY;
 	for(fi=_RELATIVE_HUMIDITY;fi<_N_WEATHER_FIELDS;fi++)
 		if(WX->populated[fi]) return fi;
 	return _N_WEATHER_FIELDS;
@@ -789,7 +875,8 @@ WEATHER_CONVERSION_ERROR setAllFields(WEATHER_CONVERSION_VECTOR *WX){
 	/* Winds do not depend on other variables. Attempt to set them
 	 * first */
 	if((retVal=setWinds(WX))!=WEATHER_CONVERSION_SUCCESS)
-		printf("weatherConversion.h:setAllFields() unable to set wind fields.\nContinuing on to other conversions.\n");
+		if(WX->quiet != TRUE)
+			printf("weatherConversion.h:setAllFields() unable to set wind fields.\nContinuing on to other conversions.\n");
 
 	if((retVal=setTemperatures(WX))!=WEATHER_CONVERSION_SUCCESS){
 		printf("weatherConversion.h:setAllFields() unable to set temperature fields.\nAborting further conversions.\n");
@@ -826,12 +913,16 @@ WEATHER_CONVERSION_ERROR setAllFields(WEATHER_CONVERSION_VECTOR *WX){
 											WX->val[_SATURATION_VAPOR_PRESSURE][i]/WX->val[_ENHANCEMENT_FACTOR][i];
 		WX->populated[_RELATIVE_HUMIDITY] = TRUE;
 		break;
-	case _MASS_MIXING_RATIO:
-		if(WX->populated[_RELATIVE_HUMIDITY]==FALSE){
+	case _ABSOLUTE_HUMIDITY:
+		if(WX->populated[_MOLE_MIXING_RATIO]==FALSE)
 			for(i=0;i<WX->N;i++)
-					WX->val[_RELATIVE_HUMIDITY][i] =
-							100.0*WX->val[_MASS_MIXING_RATIO][i]/WX->val[_SATURATION_MIXING_RATIO][i];
-		}
+				WX->val[_MOLE_MIXING_RATIO][i] = calcMMRfromAbsoluteHumidity(WX->val[_PRESSURE][i], WX->val[_TEMPERATURE_K][i],
+					WX->val[_ABSOLUTE_HUMIDITY][i]);
+		WX->populated[_MOLE_MIXING_RATIO] = TRUE;
+		if(WX->populated[_RELATIVE_HUMIDITY]==FALSE)
+			for(i=0;i<WX->N;i++)
+				WX->val[_RELATIVE_HUMIDITY][i] = 100.0*(WX->val[_MOLE_MIXING_RATIO][i]*WX->val[_PRESSURE][i]) /
+														(WX->val[_SATURATION_VAPOR_PRESSURE][i]*WX->val[_ENHANCEMENT_FACTOR][i]);
 		WX->populated[_RELATIVE_HUMIDITY] = TRUE;
 		break;
 	case _DEW_POINT_F:
@@ -880,6 +971,9 @@ WEATHER_CONVERSION_ERROR setAllFields(WEATHER_CONVERSION_VECTOR *WX){
 		if(WX->populated[_MASS_MIXING_RATIO]==FALSE)
 			for(i=0;i<WX->N;i++)
 				WX->val[_MASS_MIXING_RATIO][i] = WX->val[_SPECIFIC_HUMIDITY][i]/(1.0-WX->val[_SPECIFIC_HUMIDITY][i]/1000.0);
+		if(WX->populated[_VAPOR_PRESSURE]==FALSE)
+			for(i=0;i<WX->N;i++)
+				WX->val[_VAPOR_PRESSURE][i] = goffGratch(WX->val[_DEW_POINT_K][i]);
 		if(WX->populated[_RELATIVE_HUMIDITY]==FALSE)
 			for(i=0;i<WX->N;i++){
 				/*if (WX->val[_SPECIFIC_HUMIDITY][i] > 0.99)
@@ -897,20 +991,19 @@ WEATHER_CONVERSION_ERROR setAllFields(WEATHER_CONVERSION_VECTOR *WX){
 
 			}
 		WX->populated[_MASS_MIXING_RATIO] = TRUE;
+		WX->populated[_VAPOR_PRESSURE] = TRUE;
 		WX->populated[_RELATIVE_HUMIDITY] = TRUE;
 		break;
-	case _ABSOLUTE_HUMIDITY:
-		if(WX->populated[_MOLE_MIXING_RATIO]==FALSE)
+	case _MASS_MIXING_RATIO:
+		if(WX->populated[_VAPOR_PRESSURE]==FALSE)
 			for(i=0;i<WX->N;i++)
-				WX->val[_MOLE_MIXING_RATIO][i] = calcMMRfromAbsoluteHumidity(WX->val[_PRESSURE][i], WX->val[_TEMPERATURE_K][i],
-					WX->val[_ABSOLUTE_HUMIDITY][i]);
-		if(WX->populated[_RELATIVE_HUMIDITY]==FALSE)
+				WX->val[_VAPOR_PRESSURE][i] = calcVaporPressureFromMassMixingRatio(WX->val[_PRESSURE][i], WX->val[_MASS_MIXING_RATIO][i]);
+		if(WX->populated[_RELATIVE_HUMIDITY]==FALSE){
 			for(i=0;i<WX->N;i++)
-				WX->val[_RELATIVE_HUMIDITY][i] = 100.0*(WX->val[_MOLE_MIXING_RATIO][i]*WX->val[_PRESSURE][i]) /
-														(WX->val[_SATURATION_VAPOR_PRESSURE][i]*WX->val[_ENHANCEMENT_FACTOR][i]);
-
-		WX->populated[_MOLE_MIXING_RATIO] = TRUE;
-		WX->populated[_RELATIVE_HUMIDITY] = TRUE;
+					WX->val[_RELATIVE_HUMIDITY][i] =
+							100.0*WX->val[_VAPOR_PRESSURE][i]/WX->val[_SATURATION_VAPOR_PRESSURE][i];
+		}
+		WX->populated[_RELATIVE_HUMIDITY] = WX->populated[_VAPOR_PRESSURE] = TRUE;
 		break;
 	case _MOIST_AIR_DENSITY:
 		printf("weatherConversion.h:humidityConversion() Conversion from Moist air density is NOT SUPPORTED YET!! But it is possible.\n");
@@ -1012,18 +1105,64 @@ WEATHER_CONVERSION_ERROR setTemperatures(WEATHER_CONVERSION_VECTOR *WX){
 }
 WEATHER_CONVERSION_ERROR setPressures(WEATHER_CONVERSION_VECTOR *WX){
 	unsigned int i;
+	double scale_height = 8500;
 	if(WX->populated[_PRESSURE]){
 		if(WX->populated[_POTENTIAL_TEMPERATURE]==FALSE)
 			for(i=0;i<WX->N;i++)
-				WX->val[_POTENTIAL_TEMPERATURE][i] = calcPotentialTemperature(WX->val[_TEMPERATURE_K][i], WX->val[_PRESSURE][i],WX->standardPressure,FOREWARD);
+				WX->val[_POTENTIAL_TEMPERATURE][i] = calcPotentialTemperature(WX->val[_TEMPERATURE_K][i], WX->val[_PRESSURE][i],WX->standardPressure, FOREWARD);
 		WX->populated[_POTENTIAL_TEMPERATURE]=TRUE;
 	}
 	else if(WX->populated[_POTENTIAL_TEMPERATURE] && WX->populated[_TEMPERATURE_K]){
 		if(WX->populated[_PRESSURE]==FALSE)
 			for(i=0;i<WX->N;i++)
-				WX->val[_PRESSURE][i] = calcPotentialTemperature(WX->standardPressure, WX->val[_TEMPERATURE_K][i],WX->val[_POTENTIAL_TEMPERATURE][i],FOREWARD);
+				WX->val[_PRESSURE][i] = calcPressureFromTemperature(WX->standardPressure, WX->val[_TEMPERATURE_K][i],WX->val[_POTENTIAL_TEMPERATURE][i], BACKWARD);
 		WX->populated[_PRESSURE]=TRUE;
 		}
+	else if(WX->populated[_MOIST_AIR_DENSITY] && WX->populated[_TEMPERATURE_K]){
+		if(WX->populated[_PRESSURE] == FALSE)
+			for(i=0;i<WX->N;i++)
+				WX->val[_PRESSURE][i] = calcPressure(WX->val[_TEMPERATURE_K][i], WX->val[_MOIST_AIR_DENSITY][i]);
+		WX->populated[_PRESSURE] = TRUE;
+	}
+	else if(WX->populated[_DRY_AIR_DENSITY] && WX->populated[_ABSOLUTE_HUMIDITY] & WX->populated[_TEMPERATURE_K]){
+		// if not _MOIST_AIR_DENSITY
+		for(i=0;i<WX->N;i++)
+			WX->val[_MOIST_AIR_DENSITY][i] = WX->val[_DRY_AIR_DENSITY][i] + WX->val[_ABSOLUTE_HUMIDITY][i];
+		if(WX->populated[_PRESSURE] == FALSE)
+			for(i=0;i<WX->N;i++)
+				WX->val[_PRESSURE][i] = calcPressure(WX->val[_TEMPERATURE_K][i], WX->val[_MOIST_AIR_DENSITY][i]);
+		WX->populated[_MOIST_AIR_DENSITY] = WX->populated[_PRESSURE] = TRUE;
+	}
+	else if(WX->populated[_HEIGHT_AMSL]){
+		if(WX->populated[_PRESSURE] == FALSE){
+			printf("\033[93m**WARNING** in %s@%d:\n No precise way to find pressure exists! Pressure is estimated using scale height so atmospheric parameters have reduced accuracy.\n**WARNING**\n\033[0m", __BASE_FILE_NAME__, __LINE__);
+			for(i=0;i<WX->N;i++)
+				WX->val[_PRESSURE][i] = WX->surfacePressure * exp(-((WX->val[_HEIGHT_AMSL][i] - WX->surfaceHeight) / scale_height));
+			WX->populated[_PRESSURE] = TRUE;
+		}
+	}
+	else if(WX->populated[_HEIGHT_AGL]){
+			if(WX->populated[_PRESSURE] == FALSE){
+				printf("\033[93m**WARNING** in %s@%d:\n No precise way to find pressure exists! Pressure is estimated using scale height so atmospheric parameters have reduced accuracy.\n**WARNING**\n\033[0m", __BASE_FILE_NAME__, __LINE__);
+				for(i=0;i<WX->N;i++)
+					WX->val[_PRESSURE][i] = WX->surfacePressure * exp(-((WX->val[_HEIGHT_AGL][i]) / scale_height));
+			WX->populated[_PRESSURE] = TRUE;
+		}
+	}
+	else if(WX->populated[_GEOPOTENTIAL_HEIGHT]){
+		if(WX->populated[_PRESSURE] == FALSE){
+			printf("\033[93m**WARNING** in %s@%d:\n No precise way to find pressure exists! Pressure is estimated using scale height so atmospheric parameters have reduced accuracy.\n**WARNING**\n\033[0m", __BASE_FILE_NAME__, __LINE__);
+			if(setHeights(WX) == WEATHER_CONVERSION_SUCCESS){
+				if(WX->populated[_HEIGHT_AMSL] == FALSE)
+					return NO_PRESSURE_PRESENT;
+			for(i=0;i<WX->N;i++)
+				WX->val[_PRESSURE][i] = WX->surfacePressure * exp(-((WX->val[_HEIGHT_AMSL][i] - WX->surfaceHeight) / scale_height));
+				WX->populated[_PRESSURE] = TRUE;
+			}	
+			else
+				return NO_PRESSURE_PRESENT;
+		}
+	}
 	else
 		return NO_PRESSURE_PRESENT;
 	if(WX->populated[_ENHANCEMENT_FACTOR]==FALSE)
@@ -1055,18 +1194,32 @@ double hydrostaticDZ(WEATHER_CONVERSION_VECTOR *WX, int i){
 WEATHER_CONVERSION_ERROR setHeights(WEATHER_CONVERSION_VECTOR *WX){
 	unsigned int i;
 	double R = latitude_earth_radius(WX->latitude);
-	double max_ratio = 10.0*(1.0 - nextafter(1.0,0.0));
+	//double max_ratio = 10.0*(1.0 - nextafter(1.0,0.0));
+	double max_ratio = 0.9;
+	if(WX->populated[_GEOPOTENTIAL_HEIGHT] && WX->populated[_HEIGHT_AGL] && WX->populated[_HEIGHT_AMSL]) return WEATHER_CONVERSION_SUCCESS;
 	if(WX->populated[_GEOPOTENTIAL_HEIGHT]){
-		/* Convert from Geopotential Height to Above Mean Sea Level and Above Ground level
-		 * Theoretically, GPH cannot be the same as the Earth's radius expect where the AMSL height is infinite. */
-		for(i=0;i<WX->N;i++){
-			if(WX->val[_GEOPOTENTIAL_HEIGHT][i] / R > max_ratio )
-				WX->val[_HEIGHT_AMSL][i]  = R*1e16;
-			else
-				WX->val[_HEIGHT_AMSL][i] = WX->val[_GEOPOTENTIAL_HEIGHT][i]/(1.0 - WX->val[_GEOPOTENTIAL_HEIGHT][i]/R);
-			WX->val[_HEIGHT_AGL][i] = WX->val[_HEIGHT_AMSL][i] - WX->surfaceHeight;
+		if(WX->populated[_HEIGHT_AMSL]){
+			for(i=0;i<WX->N;i++)
+				WX->val[_HEIGHT_AGL][i] = WX->val[_HEIGHT_AMSL][i] - WX->surfaceHeight;
+			WX->populated[_HEIGHT_AGL] = TRUE;
 		}
-		WX->populated[_HEIGHT_AMSL]=WX->populated[_HEIGHT_AGL] = TRUE;
+		else if(WX->populated[_HEIGHT_AGL]){
+			for(i=0;i<WX->N;i++)
+				WX->val[_HEIGHT_AMSL][i] = WX->val[_HEIGHT_AGL][i] + WX->surfaceHeight;
+			WX->populated[_HEIGHT_AMSL] = TRUE;
+		}
+		else{
+			/* Convert from Geopotential Height to Above Mean Sea Level and Above Ground level
+			* Theoretically, GPH cannot be the same as the Earth's radius expect where the AMSL height is infinite. */
+			for(i=0;i<WX->N;i++){
+				if(WX->val[_GEOPOTENTIAL_HEIGHT][i] / R > max_ratio )
+					WX->val[_HEIGHT_AMSL][i]  = R*1e16;
+				else
+					WX->val[_HEIGHT_AMSL][i] = WX->val[_GEOPOTENTIAL_HEIGHT][i]/(1.0 - WX->val[_GEOPOTENTIAL_HEIGHT][i]/R);
+				WX->val[_HEIGHT_AGL][i] = WX->val[_HEIGHT_AMSL][i] - WX->surfaceHeight;
+			}
+			WX->populated[_HEIGHT_AMSL]=WX->populated[_HEIGHT_AGL] = TRUE;
+		}
 	}
 	else if(WX->populated[_HEIGHT_AMSL]){
 		/* Convert from height Above Mean Sea Level to Geopotential Height and AGL*/
@@ -1135,7 +1288,7 @@ WEATHER_CONVERSION_ERROR humidityConversion(WEATHER_CONVERSION_VECTOR *WX){
 	unsigned int i;
 	if(WX->populated[_DEW_POINT_K]==FALSE){
 		for(i=0;i<WX->N;i++)
-			WX->val[_DEW_POINT_K][i] = calcDewpoint(WX->val[_TEMPERATURE_K][i], WX->val[_RELATIVE_HUMIDITY][i],
+			WX->val[_DEW_POINT_K][i] = calcDewpoint(WX->val[_RELATIVE_HUMIDITY][i],
 					WX->val[_SATURATION_VAPOR_PRESSURE][i]);
 		WX->populated[_DEW_POINT_K]=TRUE;
 	}
@@ -1155,9 +1308,15 @@ WEATHER_CONVERSION_ERROR humidityConversion(WEATHER_CONVERSION_VECTOR *WX){
 		WX->populated[_VAPOR_PRESSURE]=TRUE;
 	}
 	if(WX->populated[_MOLE_MIXING_RATIO]==FALSE){
-		for(i=0;i<WX->N;i++)
-			WX->val[_MOLE_MIXING_RATIO][i] = WX->val[_ENHANCEMENT_FACTOR][i]*WX->val[_RELATIVE_HUMIDITY][i]*
+		for(i=0;i<WX->N;i++){
+			if(isnan(WX->val[_RELATIVE_HUMIDITY][i]) || isnan(WX->val[_ENHANCEMENT_FACTOR][i])) {
+				WX->val[_MOLE_MIXING_RATIO][i] = 0.0;
+			}
+			else{
+				WX->val[_MOLE_MIXING_RATIO][i] = WX->val[_ENHANCEMENT_FACTOR][i]*WX->val[_RELATIVE_HUMIDITY][i]*
 												WX->val[_SATURATION_VAPOR_PRESSURE][i]/WX->val[_PRESSURE][i]/100.0;
+			}
+		}
 		WX->populated[_MOLE_MIXING_RATIO]=TRUE;
 	}
 	if(WX->populated[_ABSOLUTE_HUMIDITY]==FALSE){
@@ -1166,15 +1325,23 @@ WEATHER_CONVERSION_ERROR humidityConversion(WEATHER_CONVERSION_VECTOR *WX){
 															WX->val[_MOLE_MIXING_RATIO][i]);
 		WX->populated[_ABSOLUTE_HUMIDITY]=TRUE;
 	}
-	if(WX->populated[_MOIST_AIR_DENSITY]==FALSE){
+	if (WX->populated[_DRY_AIR_DENSITY] == FALSE){
 		for(i=0;i<WX->N;i++)
-			WX->val[_MOIST_AIR_DENSITY][i] = calcMoistAirDensity(WX->val[_TEMPERATURE_K][i], WX->val[_PRESSURE][i],
-												WX->val[_MOLE_MIXING_RATIO][i], WX->xCO2);
+			WX->val[_DRY_AIR_DENSITY][i] = calcDryAirDensity(WX->val[_PRESSURE][i], WX->val[_TEMPERATURE_K][i], WX->val[_XCO2][i]);
+		WX->populated[_DRY_AIR_DENSITY] = TRUE;
+	}
+	if(WX->populated[_MOIST_AIR_DENSITY]==FALSE){
+		for(i=0;i<WX->N;i++){
+			if(isnan(WX->val[_MOLE_MIXING_RATIO][i]) || 0.0 == WX->val[_MOLE_MIXING_RATIO][i])
+				WX->val[_MOIST_AIR_DENSITY][i] = WX->val[_DRY_AIR_DENSITY][i];
+			else
+				WX->val[_MOIST_AIR_DENSITY][i] = calcMoistAirDensity(WX->val[_TEMPERATURE_K][i], WX->val[_PRESSURE][i], WX->val[_MOLE_MIXING_RATIO][i], WX->val[_XCO2][i]);
+		}
 		WX->populated[_MOIST_AIR_DENSITY]=TRUE;
 	}
 	if(WX->populated[_MASS_MIXING_RATIO]==FALSE){
 		for(i=0;i<WX->N;i++)
-				WX->val[_MASS_MIXING_RATIO][i] = WX->val[_RELATIVE_HUMIDITY][i]*WX->val[_SATURATION_MIXING_RATIO][i]/100.0;
+				WX->val[_MASS_MIXING_RATIO][i] = calcMassMixingRatio(WX->val[_PRESSURE][i],WX->val[_VAPOR_PRESSURE][i]/100.0);
 		WX->populated[_MASS_MIXING_RATIO]=TRUE;
 	}
 	if(WX->populated[_VIRTUAL_TEMPERATURE]==FALSE){
@@ -1186,9 +1353,6 @@ WEATHER_CONVERSION_ERROR humidityConversion(WEATHER_CONVERSION_VECTOR *WX){
 	if(WX->populated[_SPECIFIC_HUMIDITY]==FALSE){
 		for(i=0;i<WX->N;i++)
 			WX->val[_SPECIFIC_HUMIDITY][i] = calcSpecificHumidity(WX->val[_MASS_MIXING_RATIO][i]) ;
-					/* TODO This section was included at some point, but I don't know why.
-					 * If it does'n appear to mess up anything else, we can remove. LRB Oct 25, 2019.
-					 * 1000.0*WX->val[_ABSOLUTE_HUMIDITY][i]/WX->val[_MOIST_AIR_DENSITY][i];*/
 		WX->populated[_SPECIFIC_HUMIDITY]=TRUE;
 	}
 	if(WX->populated[_VIRTUAL_POTENTIAL_TEMPERATURE]==FALSE){
@@ -1207,9 +1371,18 @@ WEATHER_CONVERSION_ERROR humidityConversion(WEATHER_CONVERSION_VECTOR *WX){
 			WX->val[_WATER_VAPOR_NUMBER_DENSITY][i] = WX->val[_ABSOLUTE_HUMIDITY][i] / WATER_MOLAR_MASS;
 		WX->populated[_WATER_VAPOR_NUMBER_DENSITY] = TRUE;
 	}
-	if (WX->populated[_MOIST_AIR_NUMBER_DENSITY] == FALSE) {
+	if (WX->populated[_DRY_AIR_NUMBER_DENSITY] == FALSE){
 		for (i = 0; i<WX->N; i++)
-			WX->val[_MOIST_AIR_NUMBER_DENSITY][i] = WX->val[_WATER_VAPOR_NUMBER_DENSITY][i] / WX->val[_MOLE_MIXING_RATIO][i];
+			WX->val[_DRY_AIR_NUMBER_DENSITY][i] = dryAirNumberDensity(WX->val[_PRESSURE][i], WX->val[_TEMPERATURE_K][i]);
+		WX->populated[_DRY_AIR_NUMBER_DENSITY] = TRUE;
+	}
+	if (WX->populated[_MOIST_AIR_NUMBER_DENSITY] == FALSE) {
+		for (i = 0; i<WX->N; i++){
+			if(isnan(WX->val[_MOLE_MIXING_RATIO][i]) || (0.0 == WX->val[_WATER_VAPOR_NUMBER_DENSITY][i]))
+				WX->val[_MOIST_AIR_NUMBER_DENSITY][i] = WX->val[_DRY_AIR_NUMBER_DENSITY][i];
+			else
+				WX->val[_MOIST_AIR_NUMBER_DENSITY][i] = WX->val[_WATER_VAPOR_NUMBER_DENSITY][i] / WX->val[_MOLE_MIXING_RATIO][i];
+		}
 		WX->populated[_MOIST_AIR_NUMBER_DENSITY] = TRUE;
 	}
 	return WEATHER_CONVERSION_SUCCESS;

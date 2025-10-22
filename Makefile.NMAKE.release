@@ -1,0 +1,39 @@
+# NMAKE Makefile for Windows Visual Studio Developer PowerShell
+
+# Compiler and linker
+CC = cl
+LINK = link
+
+# Base compiler and linker flags
+CFLAGS = /W4 /EHsc /nologo /O2 /D__BASE_FILE_NAME__=\"$<\"
+LFLAGS = /NOLOGO
+
+# Source and header files
+SRCS = conversionVectorHelpers.c weatherConversion.c
+TST_SRC = converterTest.c
+DEPS = weatherConversion.h
+OBJS = conversionVectorHelpers.obj weatherConversion.obj US1976_Standard_Atmos_Table_8.obj
+TST_OBJ = converterTest.obj
+
+# Default target
+all: libweatherconverter.dll libweatherconverter.lib testWeatherConversion.exe
+
+.c.obj:
+	$(CC) $(CFLAGS) /c $< /Fo$@
+
+# Shared library (DLL)
+libweatherconverter.dll: $(OBJS)
+	$(LINK) /DLL /OUT:$@ $(OBJS) $(LFLAGS)
+
+# Static library
+libweatherconverter.lib: $(OBJS)
+	lib /NOLOGO /OUT:$@ $(OBJS)
+
+# Test executable
+testWeatherConversion.exe: $(OBJS) $(TST_OBJ)
+	$(LINK) /OUT:$@ $(OBJS) $(TST_OBJ) $(LFLAGS)
+	@echo Run testWeatherConversion.exe to verify functionality.
+
+# Clean up all generated files
+clean:
+	del /Q *.obj *.dll *.lib *.exe *.ilk *.pdb

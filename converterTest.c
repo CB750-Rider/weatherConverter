@@ -34,14 +34,16 @@ SOFTWARE.
 #include <errno.h>
 #include <string.h>
 
-void importFile(const char *fname, WEATHER_CONVERSION_VECTOR *OUT);
+int importFile(const char *fname, WEATHER_CONVERSION_VECTOR *OUT);
 void saveToFile(WEATHER_CONVERSION_VECTOR *V, const char *fname);
 void setUpTest(WEATHER_CONVERSION_VECTOR *V);
 double compare(WEATHER_CONVERSION_VECTOR *A, WEATHER_CONVERSION_VECTOR *B);
 double relError(double *a, double *b, unsigned int N);
 void setTestVector(WEATHER_CONVERSION_VECTOR *TST, WEATHER_CONVERSION_VECTOR *STD, WEATHER_CONVERTER_FIELD field);
 
+#ifndef uint
 #define uint size_t
+#endif
 
 static 	WEATHER_CONVERTER_FIELD WC_field_list[] = {
 		_TEMPERATURE_K,
@@ -72,25 +74,31 @@ int main(){
 	setUpTest(&STANDARD);
 	openWeatherConversionVector(&TEST, STANDARD.N);
 	printf("Vector open was successful.\n");
+	setQuiet(&STANDARD);
+	setNotQuiet(&STANDARD);
 	for(ri=_RELATIVE_HUMIDITY;ri<_MOIST_AIR_DENSITY;ri++){
 		printf("Now performing the conversion starting with temperature, pressure, and %s.\n",_weather_converter_field_names[ri]);
-		setTestVector(&TEST,&STANDARD,ri);
+		setTestVector(&TEST, &STANDARD, ri);
 		printf("MEAN SQUARED RELATIVE ERROR = %g.\n",compare(&TEST,&STANDARD));
 	}
 	freeWeatherConversionVector(&STANDARD);
 	freeWeatherConversionVector(&TEST);
 
 	printf("Performing a comparison to standard data.\n");
-	importFile("humidityTest.csv",&STANDARD);
-	openWeatherConversionVector(&TEST, STANDARD.N);
-	for(ri=_RELATIVE_HUMIDITY;ri<_MOIST_AIR_DENSITY;ri++){
-		printf("Now performing the conversion starting with temperature, pressure, and %s.\n",_weather_converter_field_names[ri]);
-		setTestVector(&TEST,&STANDARD,ri);
-		printf("MEAN SQUARED RELATIVE ERROR = %g.\n",compare(&TEST,&STANDARD));
+	if(importFile("humidityTest.csv", &STANDARD)){
+		openWeatherConversionVector(&TEST, STANDARD.N);
+		for(ri=_RELATIVE_HUMIDITY;ri<_MOIST_AIR_DENSITY;ri++){
+			printf("Now performing the conversion starting with temperature, pressure, and %s.\n",_weather_converter_field_names[ri]);
+			setTestVector(&TEST,&STANDARD,ri);
+			printf("MEAN SQUARED RELATIVE ERROR = %g.\n",compare(&TEST,&STANDARD));
+		}
+		freeWeatherConversionVector(&STANDARD);
+		freeWeatherConversionVector(&TEST);
 	}
-	freeWeatherConversionVector(&STANDARD);
-	freeWeatherConversionVector(&TEST);
-
+	else{
+		printf("Error opening the standard data file 'humidityTest.csv'\n");
+		printf("Skipping the standard comparison.\n");
+	}
 	return 0;
 }
 
@@ -153,9 +161,10 @@ void saveToFile(WEATHER_CONVERSION_VECTOR *V, const char *fname){
 	}
 	fclose(fp);
 }
-void importFile(const char *fname, WEATHER_CONVERSION_VECTOR *OUT){
+int importFile(const char *fname, WEATHER_CONVERSION_VECTOR *OUT){
 	FILE *fp;
 	fp = fopen(fname,"r");
+	if (fp==NULL) return 0;
 	uint N, i;
 	char line[2000],*dmp;
 	uint j,NF=(uint)sizeof( WC_field_list)/sizeof(WEATHER_CONVERTER_FIELD);
@@ -198,6 +207,7 @@ void importFile(const char *fname, WEATHER_CONVERSION_VECTOR *OUT){
 	setAllFields(OUT);
 	/* Fill in the remaining fields */
 	fclose(fp);
+	return 1;
 }
 
 double compare(WEATHER_CONVERSION_VECTOR *TST, WEATHER_CONVERSION_VECTOR *STD){
