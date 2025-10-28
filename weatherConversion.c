@@ -606,12 +606,12 @@ double calcMassMixingRatio(double P, double vp){
     %
     % References:
     %   http://www.wrh.noaa.gov/slc/projects/wxcalc/formulas/mixingRatio.pdf*/
-	double epsilon = 0.62197;
+	double epsilon = 621.97;
 
 	/* Pressure should always be greater than vapor pressure */
 	P = P > 1.00001*vp ? P:vp*1.00001;
 
-	return 1000.0*epsilon*vp/(P-vp);
+	return epsilon*vp/(P-vp);
 }
 double calcVaporPressureFromMassMixingRatio(double P, double mr){
 	/* Comment, needs reference
@@ -1000,8 +1000,8 @@ WEATHER_CONVERSION_ERROR setAllFields(WEATHER_CONVERSION_VECTOR *WX){
 				WX->val[_VAPOR_PRESSURE][i] = calcVaporPressureFromMassMixingRatio(WX->val[_PRESSURE][i], WX->val[_MASS_MIXING_RATIO][i]);
 		if(WX->populated[_RELATIVE_HUMIDITY]==FALSE){
 			for(i=0;i<WX->N;i++)
-					WX->val[_RELATIVE_HUMIDITY][i] =
-							100.0*WX->val[_VAPOR_PRESSURE][i]/WX->val[_SATURATION_VAPOR_PRESSURE][i];
+				  WX->val[_RELATIVE_HUMIDITY][i] = 100.0*WX->val[_MASS_MIXING_RATIO][i]/WX->val[_SATURATION_MIXING_RATIO][i];
+					//WX->val[_RELATIVE_HUMIDITY][i] = 100.0*WX->val[_VAPOR_PRESSURE][i]/WX->val[_SATURATION_VAPOR_PRESSURE][i];
 		}
 		WX->populated[_RELATIVE_HUMIDITY] = WX->populated[_VAPOR_PRESSURE] = TRUE;
 		break;
@@ -1157,7 +1157,7 @@ WEATHER_CONVERSION_ERROR setPressures(WEATHER_CONVERSION_VECTOR *WX){
 					return NO_PRESSURE_PRESENT;
 			for(i=0;i<WX->N;i++)
 				WX->val[_PRESSURE][i] = WX->surfacePressure * exp(-((WX->val[_HEIGHT_AMSL][i] - WX->surfaceHeight) / scale_height));
-				WX->populated[_PRESSURE] = TRUE;
+			WX->populated[_PRESSURE] = TRUE;
 			}	
 			else
 				return NO_PRESSURE_PRESENT;
@@ -1341,7 +1341,7 @@ WEATHER_CONVERSION_ERROR humidityConversion(WEATHER_CONVERSION_VECTOR *WX){
 	}
 	if(WX->populated[_MASS_MIXING_RATIO]==FALSE){
 		for(i=0;i<WX->N;i++)
-				WX->val[_MASS_MIXING_RATIO][i] = calcMassMixingRatio(WX->val[_PRESSURE][i],WX->val[_VAPOR_PRESSURE][i]/100.0);
+				WX->val[_MASS_MIXING_RATIO][i] = calcMassMixingRatio(WX->val[_PRESSURE][i],WX->val[_VAPOR_PRESSURE][i]);
 		WX->populated[_MASS_MIXING_RATIO]=TRUE;
 	}
 	if(WX->populated[_VIRTUAL_TEMPERATURE]==FALSE){
