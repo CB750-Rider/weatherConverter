@@ -590,6 +590,11 @@ double calcSpecificHumidity(double mr){
 	/* convert back to g/kg*/
 	return sh*1000.0;
 }
+double _mmr_update(double m, double e, double P, double vp){
+	double num = (e+m) * (m*P - vp*(e+m));
+	double den = P*e;
+	return m - num/den;
+}
 double calcMassMixingRatio(double P, double vp){
 	/*     %CALCMIXINGRATIO Calculate mixing ratio
     % Calculate mixing ratio for a specified pressure and temperature. For
@@ -606,12 +611,22 @@ double calcMassMixingRatio(double P, double vp){
     %
     % References:
     %   http://www.wrh.noaa.gov/slc/projects/wxcalc/formulas/mixingRatio.pdf*/
-	double epsilon = 621.97;
+	if ((P<=0.0)||(vp<=0.0)) return 0.0;
+
+	double epsilon = 621.97, mmr;
 
 	/* Pressure should always be greater than vapor pressure */
-	P = P > 1.00001*vp ? P:vp*1.00001;
+	double P0 = P > 1.0000001*vp ? P:vp*1.0000001;
 
-	return epsilon*vp/(P-vp);
+	mmr = epsilon*vp/(P0-vp);
+
+	/* Now optimize the mass mixing ratio that best gives the given vapor pressure */
+	mmr = _mmr_update(mmr, epsilon, P, vp);
+	mmr = _mmr_update(mmr, epsilon, P, vp);
+	mmr = _mmr_update(mmr, epsilon, P, vp);
+	mmr = _mmr_update(mmr, epsilon, P, vp);
+	mmr = _mmr_update(mmr, epsilon, P, vp);
+	return mmr;
 }
 double calcVaporPressureFromMassMixingRatio(double P, double mr){
 	/* Comment, needs reference
@@ -987,7 +1002,8 @@ WEATHER_CONVERSION_ERROR setAllFields(WEATHER_CONVERSION_VECTOR *WX){
 							100);
 				else*/
 					WX->val[_RELATIVE_HUMIDITY][i] =
-						100.0*WX->val[_MASS_MIXING_RATIO][i]/WX->val[_SATURATION_MIXING_RATIO][i];
+						100.0*WX->val[_VAPOR_PRESSURE][i]/WX->val[_SATURATION_VAPOR_PRESSURE][i];
+						//100.0*WX->val[_MASS_MIXING_RATIO][i]/WX->val[_SATURATION_MIXING_RATIO][i];
 
 			}
 		WX->populated[_MASS_MIXING_RATIO] = TRUE;
@@ -1000,7 +1016,7 @@ WEATHER_CONVERSION_ERROR setAllFields(WEATHER_CONVERSION_VECTOR *WX){
 				WX->val[_VAPOR_PRESSURE][i] = calcVaporPressureFromMassMixingRatio(WX->val[_PRESSURE][i], WX->val[_MASS_MIXING_RATIO][i]);
 		if(WX->populated[_RELATIVE_HUMIDITY]==FALSE){
 			for(i=0;i<WX->N;i++)
-				  WX->val[_RELATIVE_HUMIDITY][i] = 100.0*WX->val[_MASS_MIXING_RATIO][i]/WX->val[_SATURATION_MIXING_RATIO][i];
+				  WX->val[_RELATIVE_HUMIDITY][i] = 100.0*WX->val[_VAPOR_PRESSURE][i]/WX->val[_SATURATION_VAPOR_PRESSURE][i];
 					//WX->val[_RELATIVE_HUMIDITY][i] = 100.0*WX->val[_VAPOR_PRESSURE][i]/WX->val[_SATURATION_VAPOR_PRESSURE][i];
 		}
 		WX->populated[_RELATIVE_HUMIDITY] = WX->populated[_VAPOR_PRESSURE] = TRUE;

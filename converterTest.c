@@ -255,7 +255,7 @@ return;
 }
 
 void addField(FILE *fp, WEATHER_CONVERSION_VECTOR *WX, WEATHER_CONVERTER_FIELD fi, const char *prefix){
-	fprintf(fp, "%s%s:[",prefix, _weather_converter_field_names[fi]);
+	fprintf(fp, "%s\"%s\":[",prefix, _weather_converter_field_flags[fi]);
 	size_t i;
 	if(WX->N > 0){
 		fprintf(fp,"%g", WX->val[fi][0]);
@@ -272,7 +272,7 @@ void recordSetTestVector(WEATHER_CONVERSION_VECTOR *TST,
 	FILE *fp;
 	char fname[1000 + 1];
 
-	snprintf(fname, 1000, "%s_from_%s.json", outfile_base, _weather_converter_field_names[field]);
+	snprintf(fname, 1000, "%s_from_%s.json", outfile_base, _weather_converter_field_flags[field]);
 
 	if ((fp = fopen(fname, "w")) == NULL){
 		printf("Unable to open %s for writing.", fname);
@@ -281,13 +281,13 @@ void recordSetTestVector(WEATHER_CONVERSION_VECTOR *TST,
 	
 	fprintf(fp, "{\n");
 
-    fprintf(fp, " standardVariables: {\n");
+    fprintf(fp, " \"standardVariables\": {\n");
 		addField(fp, STD, 0, "  ");
 		for(ri=1;ri<_N_WEATHER_FIELDS;ri++)
 			addField(fp, STD, ri, ",\n  ");
-	fprintf(fp, " }\n");
+	fprintf(fp, " },\n");
 
-	fprintf(fp, " setVariables: {\n");
+	fprintf(fp, " \"setVariables\": {\n");
 		addField(fp, STD, _U_WIND, "  ");		
 		addField(fp, STD, _V_WIND, ",\n  ");		
 		addField(fp, STD, _TEMPERATURE_K, ",\n  ");		
@@ -295,7 +295,7 @@ void recordSetTestVector(WEATHER_CONVERSION_VECTOR *TST,
 		addField(fp, STD, field, ",\n  ");		
 	fprintf(fp, " },\n");
 
-	fprintf(fp, " calculatedVariables: {\n");
+	fprintf(fp, " \"calculatedVariables\": {\n");
 		for(ri=0;ri<_N_WEATHER_FIELDS;ri++){
 			if(record_conversion[ri]){
 				addField(fp, TST, ri, "  ");
