@@ -15,4 +15,4 @@ testWeatherConversion
 *.lib
 *.pdb
 *.exe
-
+*.json

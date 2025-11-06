@@ -37,7 +37,12 @@ SOFTWARE.
 int importFile(const char *fname, WEATHER_CONVERSION_VECTOR *OUT);
 void saveToFile(WEATHER_CONVERSION_VECTOR *V, const char *fname);
 void setUpTest(WEATHER_CONVERSION_VECTOR *V);
-double compare(WEATHER_CONVERSION_VECTOR *A, WEATHER_CONVERSION_VECTOR *B);
+double compare(WEATHER_CONVERSION_VECTOR *A, WEATHER_CONVERSION_VECTOR *B, BOOLEAN *C);
+void recordErrorProneConversions(WEATHER_CONVERSION_VECTOR *A, WEATHER_CONVERSION_VECTOR *B, BOOLEAN *C, WEATHER_CONVERTER_FIELD si, const char *f);
+void addField(FILE *, WEATHER_CONVERSION_VECTOR *, WEATHER_CONVERTER_FIELD , const char *);
+void recordSetTestVector(WEATHER_CONVERSION_VECTOR *, 
+	WEATHER_CONVERSION_VECTOR *, BOOLEAN *, 
+	const WEATHER_CONVERTER_FIELD, const char *);
 double relError(double *a, double *b, unsigned int N);
 void setTestVector(WEATHER_CONVERSION_VECTOR *TST, WEATHER_CONVERSION_VECTOR *STD, WEATHER_CONVERTER_FIELD field);
 
@@ -67,6 +72,7 @@ int main(){
 	WEATHER_CONVERSION_VECTOR STANDARD;
 	WEATHER_CONVERSION_VECTOR TEST;
 	WEATHER_CONVERTER_FIELD ri;
+	BOOLEAN record_conversion[_N_WEATHER_FIELDS] = {0};
 
 	printf("Running tests to see how well the conversions work.\n");
 
@@ -79,7 +85,8 @@ int main(){
 	for(ri=_RELATIVE_HUMIDITY;ri<_MOIST_AIR_DENSITY;ri++){
 		printf("Now performing the conversion starting with temperature, pressure, and %s.\n",_weather_converter_field_names[ri]);
 		setTestVector(&TEST, &STANDARD, ri);
-		printf("MEAN SQUARED RELATIVE ERROR = %g.\n",compare(&TEST,&STANDARD));
+		printf("MEAN SQUARED RELATIVE ERROR = %g.\n",compare(&TEST, &STANDARD, record_conversion));
+		recordErrorProneConversions(&TEST, &STANDARD, record_conversion, ri, "self-consistency");
 	}
 	freeWeatherConversionVector(&STANDARD);
 	freeWeatherConversionVector(&TEST);
@@ -90,7 +97,8 @@ int main(){
 		for(ri=_RELATIVE_HUMIDITY;ri<_MOIST_AIR_DENSITY;ri++){
 			printf("Now performing the conversion starting with temperature, pressure, and %s.\n",_weather_converter_field_names[ri]);
 			setTestVector(&TEST,&STANDARD,ri);
-			printf("MEAN SQUARED RELATIVE ERROR = %g.\n",compare(&TEST,&STANDARD));
+			printf("MEAN SQUARED RELATIVE ERROR = %g.\n",compare(&TEST,&STANDARD, record_conversion));
+			recordErrorProneConversions(&TEST, &STANDARD, record_conversion, ri, "standard-data");
 		}
 		freeWeatherConversionVector(&STANDARD);
 		freeWeatherConversionVector(&TEST);
@@ -139,6 +147,7 @@ void setUpTest(WEATHER_CONVERSION_VECTOR *V){
 
 	saveToFile(V, "temporaryHumidityTest.csv");
 }
+
 void saveToFile(WEATHER_CONVERSION_VECTOR *V, const char *fname){
 	FILE *fp;
 	fp = fopen(fname,"w");
@@ -161,6 +170,7 @@ void saveToFile(WEATHER_CONVERSION_VECTOR *V, const char *fname){
 	}
 	fclose(fp);
 }
+
 int importFile(const char *fname, WEATHER_CONVERSION_VECTOR *OUT){
 	FILE *fp;
 	fp = fopen(fname,"r");
@@ -210,18 +220,100 @@ int importFile(const char *fname, WEATHER_CONVERSION_VECTOR *OUT){
 	return 1;
 }
 
-double compare(WEATHER_CONVERSION_VECTOR *TST, WEATHER_CONVERSION_VECTOR *STD){
+double compare(WEATHER_CONVERSION_VECTOR *TST, WEATHER_CONVERSION_VECTOR *STD,
+			   BOOLEAN *record_conversion){
 	double totalErr = 0.0,tmpError;
 	WEATHER_CONVERTER_FIELD ri;
 
 	for(ri=0;ri<_N_WEATHER_FIELDS;ri++){
 		if(ri==_OTHER_INPUT)continue;
-		if((tmpError=relError(TST->val[ri],STD->val[ri],TST->N)) > ((double)TST->N)*1.0e-6)
-			printf("A high relative error, %lf, was seen for field # %d, %s.\n",tmpError/((double)TST->N),ri,_weather_converter_field_names[ri]);
+		if((tmpError=relError(TST->val[ri],STD->val[ri],TST->N)) > ((double)TST->N)*1.0e-6){
+			printf("A high relative error, %lf, was seen for field # %d, %s.\n",tmpError/((double)TST->N),ri,_weather_converter_field_names[ri]);	
+			record_conversion[ri] = TRUE;
+		}
+		else
+			record_conversion[ri] = FALSE;
 		totalErr += tmpError;
 	}
 
 	return totalErr/(double)_N_WEATHER_FIELDS/(double)TST->N;
+}
+
+void recordErrorProneConversions(WEATHER_CONVERSION_VECTOR *TEST, 
+	WEATHER_CONVERSION_VECTOR *STANDARD, BOOLEAN *record_conversion, 
+	const WEATHER_CONVERTER_FIELD si, const char *outfile_base){
+	/* If there were any fields that did not compare well, then re-run the conversion,
+but compare the processes. */
+WEATHER_CONVERTER_FIELD i;
+for(i=0; i<_N_WEATHER_FIELDS; i++){
+	if(record_conversion[i]){
+		recordSetTestVector(TEST, STANDARD, record_conversion, si, outfile_base);
+		return;
+	}
+}
+return;
+}
+
+void addField(FILE *fp, WEATHER_CONVERSION_VECTOR *WX, WEATHER_CONVERTER_FIELD fi, const char *prefix){
+	fprintf(fp, "%s%s:[",prefix, _weather_converter_field_names[fi]);
+	size_t i;
+	if(WX->N > 0){
+		fprintf(fp,"%g", WX->val[fi][0]);
+		for(i=1;i<WX->N;i++)
+			fprintf(fp,",%g",WX->val[fi][i]);
+	}	
+		fprintf(fp, "]");
+}
+
+void recordSetTestVector(WEATHER_CONVERSION_VECTOR *TST, 
+	WEATHER_CONVERSION_VECTOR *STD, BOOLEAN *record_conversion, 
+	const WEATHER_CONVERTER_FIELD field, const char *outfile_base){
+	WEATHER_CONVERTER_FIELD ri;
+	FILE *fp;
+	char fname[1000 + 1];
+
+	snprintf(fname, 1000, "%s_from_%s.json", outfile_base, _weather_converter_field_names[field]);
+
+	if ((fp = fopen(fname, "w")) == NULL){
+		printf("Unable to open %s for writing.", fname);
+		return;
+	}
+	
+	fprintf(fp, "{\n");
+
+    fprintf(fp, " standardVariables: {\n");
+		addField(fp, STD, 0, "  ");
+		for(ri=1;ri<_N_WEATHER_FIELDS;ri++)
+			addField(fp, STD, ri, ",\n  ");
+	fprintf(fp, " }\n");
+
+	fprintf(fp, " setVariables: {\n");
+		addField(fp, STD, _U_WIND, "  ");		
+		addField(fp, STD, _V_WIND, ",\n  ");		
+		addField(fp, STD, _TEMPERATURE_K, ",\n  ");		
+		addField(fp, STD, _PRESSURE, ",\n  ");		
+		addField(fp, STD, field, ",\n  ");		
+	fprintf(fp, " },\n");
+
+	fprintf(fp, " calculatedVariables: {\n");
+		for(ri=0;ri<_N_WEATHER_FIELDS;ri++){
+			if(record_conversion[ri]){
+				addField(fp, TST, ri, "  ");
+				break;
+			}
+		}
+		for(;ri<_N_WEATHER_FIELDS;ri++){
+			if(record_conversion[ri]){
+				addField(fp, TST, ri, ",\n  ");
+			}
+		}
+
+	fprintf(fp, " }\n");
+
+	fprintf(fp, "}");
+
+	fclose(fp);
+		
 }
 
 double relError(double *a, double *b, unsigned int N){
