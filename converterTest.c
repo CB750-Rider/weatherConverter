@@ -115,7 +115,7 @@ int main(){
 void setUpTest(WEATHER_CONVERSION_VECTOR *V){
 	double P[] = {1.,5.,10.,15.,20.,40.,80.,100.,200.,300.,400.,500.,600.,700.,800.,900.,950.,1000.,1050.,1100.,1150.,1200.,1250.,1300.}; /* in mb */
 	double T=250.,_T[] = {250.,5.,320.}; /* Temperature range (min,step,max) */
-	double RH=0.,_RH[] = {0.1,4.99,100.}; /* Relative Humidity Range */
+	double RH=0.,_RH[] = {0.0,4.99,100.}; /* Relative Humidity Range */
 
 	size_t iP,iT,iRH,idx,NP=sizeof(P)/sizeof(double);
 	size_t NT = (size_t) ( (_T[2]-_T[0])/_T[1]);
@@ -160,6 +160,15 @@ void saveToFile(WEATHER_CONVERSION_VECTOR *V, const char *fname){
 		printf("Unable to open %s for writing.\n",fname);
 		return;
 	}
+
+	/* Create a header */
+	fi = WC_field_list[0];
+	fprintf(fp, "%s (%s)", _weather_converter_field_names[fi], _weather_converter_field_units[fi]);
+	for(j=1;j<N;j++){
+		fi = WC_field_list[j];
+		fprintf(fp, ",%s (%s)", _weather_converter_field_names[fi], _weather_converter_field_units[fi]);
+	}
+	fprintf(fp,"\n");
 
 	for(i=0;i<V->N;i++){
 		fi = WC_field_list[0];
@@ -273,6 +282,9 @@ void recordSetTestVector(WEATHER_CONVERSION_VECTOR *TST,
 	WEATHER_CONVERTER_FIELD ri;
 	FILE *fp;
 	char fname[1000 + 1];
+
+	snprintf(fname, 1000, "%s_from_%s_TEST.csv", outfile_base, _weather_converter_field_flags[field]);
+	saveToFile(TST, fname);
 
 	snprintf(fname, 1000, "%s_from_%s.json", outfile_base, _weather_converter_field_flags[field]);
 

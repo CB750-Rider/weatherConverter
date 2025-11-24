@@ -3,13 +3,14 @@ import json
 import numpy as np
 import pdb
 from typing import Tuple
+import warnings
 
 description = """This file reads an output json from the testWeatherCoverter program and helps to identify where siginifcant errors occur. """
 
 parser = argparse.ArgumentParser(description=description)
 
 parser.add_argument('filename')
-parser.add_argument('--n_out', default=4)
+parser.add_argument('--n_out', default=4, type=int)
 
 args = parser.parse_args()
 
@@ -38,8 +39,10 @@ def relative_difference_with_sorting(a: np.ndarray, b: np.ndarray) -> Tuple[np.n
     abs_b = np.abs(b)
     
     # Relative difference: |a - b| / max(|a|, |b|)
-    # This is symmetric and well-behaved when one or both are zero
-    rel_diff = np.abs(a - b) / np.maximum(abs_a, abs_b)
+    # This is symmetric and well-behaved when one is zero
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        rel_diff = np.abs(a - b) / np.maximum(abs_a, abs_b)
     
     # Where both a and b are zero, max(|a|,|b|) = 0 → division by zero
     # In that case, relative difference is 0 (identical values)

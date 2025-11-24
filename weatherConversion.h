@@ -63,6 +63,9 @@ typedef enum{
 #define WATER_MOLAR_MASS 18.015261322024042
 #define AVOGADRO_CONSTANT 6.02214076e23
 #define GAS_CONSTANT 8.314598
+// Using dry air molar mass from US1976 with adjustment for higher CO2 concentrations
+#define DRY_AIR_MOLAR_MASS 28.9647
+#define WATER_VAPOR_MOLAR_MASS 18.01528
 /* Check for successful function completion. If there is a problem, then send an
  * error to the user. */
 #define _wcCheck(fun) do{ \
@@ -202,6 +205,8 @@ extern const char *_weather_converter_site_units_full[_N_WEATHER_SITE_SPECIFIC_S
 extern const char *_weather_converter_site_units[_N_WEATHER_SITE_SPECIFIC_SETTINGS];
 extern double _weather_converter_site_defaults[_N_WEATHER_SITE_SPECIFIC_SETTINGS];
 /* Functions defined in weatherConversion.c */
+int is_unstable(double, double, double);
+double safe_divide(double, double, double);
 double latitude_gravity(double lat);
 double latitude_earth_radius(double lat);
 double free_air_gravity(double lat, double h);
@@ -230,12 +235,15 @@ double calcDryAirDensity(double T, double P, double xCO2);
 double calcPressure(double T, double rho);
 double dryAirNumberDensity(double P, double T);
 double dZ_dxv(double T, double p, double x);
-double calcSpecificHumidity(double mr);
+double calcSpecificHumidity(double ah, double mad, double vp, double P);
 double calcMassMixingRatio(double P, double vp);
-double calcVaporPressureFromMassMixingRatio(double P, double mr);
+double calcMoleMixingRatio(double ef, double rh, double svp, double P);
+double calcVaporPressureFromMassMixingRatio(double P, double mr,  double mmr0, double svp);
 double calcMMRfromAbsoluteHumidity(double P, double T, double a);
 double calcSHfromRH(double T, double P, double xCO2, double SVP, double RH, double ef);
 double estRHfromSH(double SH, double T, double P, double xCO2, double SVP, double ef, double RH);
+double calcSpecificHumidityFromVaporPressure(double VP, double P);
+double calcVaporPressureFromSpecificHumidity(double SH, double P);
 int findStartIndex(double *x, double x0,int N);
 int findEndIndex(double *x,double x0,int N);
 double logarithmicRule(double *x, double *y, int i);

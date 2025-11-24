@@ -44,10 +44,10 @@ SOFTWARE.
 #else
 #define _MY_INFINITY 1.0/0.0
 #endif
+#include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
 
-static int is_unstable(double num,double denom, double X0);
 WEATHER_CONVERSION_ERROR _weather_converter_global_return;
 
 const char *_weather_converter_field_names[_N_WEATHER_FIELDS] = {
@@ -234,6 +234,9 @@ double _weather_converter_site_defaults[_N_WEATHER_SITE_SPECIFIC_SETTINGS] = {
 		1013.25, /* Surface pressure */
 		273.15 /* Surface temperature */
 };
+
+static double lowPressureCalcMassMixingRatio(double P, double vp);
+
 int is_unstable(double num,double denom,double X0){
 	/* Check for numerical stability of division */
 	double lnum,lden,lx;
@@ -245,6 +248,11 @@ int is_unstable(double num,double denom,double X0){
 	 * the results are probably ill-conditioned */
 	if( (lnum - lden) > (lx - 2)) return 1;
 	return (fabs(lnum-lden) > 12);
+}
+double safe_divide(double num, double denom, double else_val){
+	if( fabs(nextafter(num, denom) - num)*10.0 > fabs(denom) )
+		return else_val;
+	return num / denom;
 }
 double latitude_gravity(double lat){
 	/* Gravity formula 1980 from The Geodesist's Handbook 2000, p132
@@ -298,6 +306,10 @@ double calcDewpoint(double RH, double SVP){
 	 *  use Newton's method to improve the inversion to machine precision. */
 	double term1, dewPoint, alpha, num, denom;
 
+	/* In the limit that RH-> we get an indeterminate form,
+	taking l'hopital's rule once gives us T = -237.3*/
+	if(RH<=0.0) return -237.3;
+
 	term1 = log(SVP*RH/611.2);
 	dewPoint = 243.75*term1/(17.67-term1)+273.15;
 	/* Now improve the estimate of the dew point using
@@ -339,6 +351,7 @@ double goffGratch(double T){
 	 * References:
      *http://en.wikipedia.org/wiki/Goff%E2%80%93Gratch_equation
      *http://cires.colorado.edu/~voemel/vp.html*/
+	if (T==-273.3) return 0.0;
     double TS = 373.16,loge;
     loge =  -7.90298 * ((TS / T) - 1.0) +
              5.02808 * log10(TS / T) -
@@ -427,7 +440,10 @@ double calcAbsolute(double T, double P, double moleMixingRatio){
 	double beta,Z; /* Number density of moist air, Compressibility of moist air */
 
 	Z = calcCompressibility(T,P,moleMixingRatio);
-	beta = P*100/Z/T/GAS_CONSTANT;
+	double num = P*100.0;
+	double den = Z*T*GAS_CONSTANT;
+	beta = safe_divide(num, den, 0.0);
+	// beta = P*100/Z/T/GAS_CONSTANT;
 
 	return beta*moleMixingRatio*18.01528;
 }
@@ -489,7 +505,10 @@ double calcMoistAirDensity(double T, double P, double xv, double xCO2){
 	Ma = 28.9635 + 12.011e-6*(xCO2 - 400.0); /* Molar mass of dry air */
 	Z = calcCompressibility(T,P,xv);
 
-	return (P*100.0*Ma/Z/T/R);
+	double nm = P * 100.0 * Ma;
+	double dn = Z * T * R;
+	// return (P*100.0*Ma/Z/T/R);
+	return safe_divide(nm, dn, 0.0);
 }
 double moistAirNumberDensity(double T, double P, double xv){
 	/* Moist air number density in mol / m^3. Also called "beta"*/
@@ -567,14 +586,16 @@ double dBeta_dxv(double T, double P, double xv){
 
 	return (-moistAirNumberDensity(T,P,xv)/Z*dZ_dxv(T,P,xv));
 }
-double calcSpecificHumidity(double mr){
+double calcSpecificHumidity(double ah, double mad, double vp, double P){
 	/*
 	 *
-    %CALCSPECIFICHUMIDITY Calculate specific humidity
+    %CALCSPECIFICHUMIDITY Calculate specific humidity, ratio of mass of water vapor to mass of moist air.
     % Calculate the specific humidity based upon a given mixing ratio.
     %
     % Inputs:
     %   mixingRatio      [vector] = Mixing Ratio (g / kg)
+	%   ah		Abosulte Humidity (g / m^3)
+	%	mad 	Moist Air Density (g / m^3)
     %
     % Outputs:
     %   specificHumidity [vector] = Specific Humidity (g/kg)
@@ -583,17 +604,15 @@ double calcSpecificHumidity(double mr){
     %   Wallace, John M., Atmsopheric Science: An Introductor Survey 2nd Edition, 2006 - 3.5.1 Unlabeled Equation
     %   http://hurri.kean.edu/~yoh/calculations/moisture/Equations/moist.html */
 
-	double sh;
+	// double sh;
 	/* convert to g/g*/
-	sh = mr/1000.0;
-	sh = sh/(1.0+sh);
+	// sh = mr/1000.0;
+	// sh = sh/(1.0+sh);
 	/* convert back to g/kg*/
-	return sh*1000.0;
-}
-double _mmr_update(double m, double e, double P, double vp){
-	double num = (e+m) * (m*P - vp*(e+m));
-	double den = P*e;
-	return m - num/den;
+	double v1 = calcSpecificHumidityFromVaporPressure(vp, P);
+	double v2 = ah/mad*1000.0;
+	if(v1 == v2) return v1;
+	return v1;
 }
 double calcMassMixingRatio(double P, double vp){
 	/*     %CALCMIXINGRATIO Calculate mixing ratio
@@ -612,32 +631,70 @@ double calcMassMixingRatio(double P, double vp){
     % References:
     %   http://www.wrh.noaa.gov/slc/projects/wxcalc/formulas/mixingRatio.pdf*/
 	if ((P<=0.0)||(vp<=0.0)) return 0.0;
-
 	double epsilon = 621.97, mmr;
 
 	/* Pressure should always be greater than vapor pressure */
-	double P0 = P > 1.0000001*vp ? P:vp*1.0000001;
+	double num = epsilon*vp;
+	double denom = P-vp;
 
-	mmr = epsilon*vp/(P0-vp);
+	mmr = safe_divide(num, denom, INFINITY);
+
+	if (mmr > 1.0e4 || mmr < 0.0){
+		/* In regimes of low pressure relative to the vapor pressure,
+		change the relationship to one that asymptotically approaches
+		an MMR of 100,000. So at MMR of 10,000 (10 parts H20 per
+		part dry air by mass) we use a substitute function. */
+		return lowPressureCalcMassMixingRatio(P, vp);
+	}
 
 	/* Now optimize the mass mixing ratio that best gives the given vapor pressure */
-	mmr = _mmr_update(mmr, epsilon, P, vp);
-	mmr = _mmr_update(mmr, epsilon, P, vp);
-	mmr = _mmr_update(mmr, epsilon, P, vp);
-	mmr = _mmr_update(mmr, epsilon, P, vp);
-	mmr = _mmr_update(mmr, epsilon, P, vp);
+	// mmr = _mmr_update(mmr, epsilon, P, vp, 8);
 	return mmr;
 }
-double calcVaporPressureFromMassMixingRatio(double P, double mr){
+double _MMRslopeFromVP(double vp){
+	double epsilon = 621.97;
+	double P0 = vp*(1.0 + epsilon/1.0e4);
+	return safe_divide(9.0e4, P0, INFINITY);
+}
+double _VPfromMMRslope(double m){
+	double epsilon = 621.97;
+	if(isinf(m)) return 0.0;
+	double P0 = 9.0e4 / m;
+	return P0 / (1.0 + epsilon/1.0e4);
+}
+double lowPressureCalcMassMixingRatio(double P, double vp){
+	/* In regimes where the pressure approaches the vapor pressure
+	for the given temperature, the Mass Mixing Ratio (MMR) calculation
+	gets unstable as the denominator becomes asymptotic. 
+	
+	Here we use a mathematically convenient (invertable) linear
+	relationship between pressure and mmr for a given vapor pressure.
+	This does not have any sort of physical basis, but makes the code
+	work well under conditions that probably won't be seen in real life.
+	
+	An improvement would be to use an invertable expression that is 
+	continuous to the first or first and second derivatives. 
+
+	Here we just use MMR = 100,000 - P*m(vp) here m(vp) is a slope that that depends on vapor pressure.
+	*/
+
+	double m = _MMRslopeFromVP(vp);
+	return 1e5 - P * m;
+}
+double calcMoleMixingRatio(double ef, double rh, double svp, double P){
+	double numerator = ef * rh * svp;
+	double denominator = P * 100.0;
+	return safe_divide(numerator, denominator, 0.0);
+}
+double calcVaporPressureFromMassMixingRatio(double P, double mmr, double mmr0, double svp){
 	/* Comment, needs reference
 	P is atmospheric pressure, units of vapor pressure will match pressure units
 	mr is mass mixing ratio
 	
 	Derived from  https://www.weather.gov/media/epz/wxcalc/mixingRatio.pdf */
-	if (isinf(mr)){return P;}
-
-	double epsilon = 621.97;
-	return mr*P/(epsilon + mr);
+	if (isinf(mmr))return P;
+	double rh = safe_divide(mmr, mmr0, 0.0);
+	return svp * rh;
 }
 double calcMMRfromAbsoluteHumidity(double P, double T, double a){
 	double R = GAS_CONSTANT; /* Gas constant */
@@ -706,6 +763,28 @@ double estRHfromSH(double SH, double T, double P, double xCO2, double SVP, doubl
 
 	return RH;
 
+}
+double calcSpecificHumidityFromVaporPressure(double VP, double P){
+	/* From 
+	https://vortex.plymouth.edu/~stmiller/stmiller_content/Publications/AtmosRH_Equations_Rev.pdf
+
+	*/
+	double MMR = WATER_VAPOR_MOLAR_MASS / DRY_AIR_MOLAR_MASS;
+	double num = MMR * VP;
+	double denom = P - (1 - MMR)*VP;  
+	return num / denom * 1000;
+}
+double calcVaporPressureFromSpecificHumidity(double SH, double P){
+	/* From 
+	https://vortex.plymouth.edu/~stmiller/stmiller_content/Publications/AtmosRH_Equations_Rev.pdf
+
+	The formula is inverted, solving for vapor pressure.
+	*/
+	SH = SH / 1000.0;
+	double MMR = WATER_VAPOR_MOLAR_MASS / DRY_AIR_MOLAR_MASS;
+	double num = SH * P;
+	double denom = SH + MMR*(1 - SH);  // Shouldn't ever be zero because SH must be > 0
+	return num / denom;
 }
 int findStartIndex(double *x, double x0,int N){
 	int start_i;
@@ -983,27 +1062,15 @@ WEATHER_CONVERSION_ERROR setAllFields(WEATHER_CONVERSION_VECTOR *WX){
 		WX->populated[_RELATIVE_HUMIDITY] = TRUE;
 		break;
 	case _SPECIFIC_HUMIDITY:
-		if(WX->populated[_MASS_MIXING_RATIO]==FALSE)
-			for(i=0;i<WX->N;i++)
-				WX->val[_MASS_MIXING_RATIO][i] = WX->val[_SPECIFIC_HUMIDITY][i]/(1.0-WX->val[_SPECIFIC_HUMIDITY][i]/1000.0);
 		if(WX->populated[_VAPOR_PRESSURE]==FALSE)
 			for(i=0;i<WX->N;i++)
-				WX->val[_VAPOR_PRESSURE][i] = goffGratch(WX->val[_DEW_POINT_K][i]);
+				WX->val[_VAPOR_PRESSURE][i] = calcVaporPressureFromSpecificHumidity(
+					WX->val[_SPECIFIC_HUMIDITY][i], WX->val[_PRESSURE][i]
+				);
 		if(WX->populated[_RELATIVE_HUMIDITY]==FALSE)
 			for(i=0;i<WX->N;i++){
-				/*if (WX->val[_SPECIFIC_HUMIDITY][i] > 0.99)
-					WX->val[_RELATIVE_HUMIDITY][i] = estRHfromSH(
-							WX->val[_SPECIFIC_HUMIDITY][i],
-							WX->val[_TEMPERATURE_K][i],
-							WX->val[_PRESSURE][i],
-							WX->xCO2,
-							WX->val[_SATURATION_VAPOR_PRESSURE][i],
-							WX->val[_ENHANCEMENT_FACTOR][i],
-							100);
-				else*/
-					WX->val[_RELATIVE_HUMIDITY][i] =
-						100.0*WX->val[_VAPOR_PRESSURE][i]/WX->val[_SATURATION_VAPOR_PRESSURE][i];
-						//100.0*WX->val[_MASS_MIXING_RATIO][i]/WX->val[_SATURATION_MIXING_RATIO][i];
+				WX->val[_RELATIVE_HUMIDITY][i] =
+					100.0*WX->val[_VAPOR_PRESSURE][i]/WX->val[_SATURATION_VAPOR_PRESSURE][i];
 
 			}
 		WX->populated[_MASS_MIXING_RATIO] = TRUE;
@@ -1013,7 +1080,7 @@ WEATHER_CONVERSION_ERROR setAllFields(WEATHER_CONVERSION_VECTOR *WX){
 	case _MASS_MIXING_RATIO:
 		if(WX->populated[_VAPOR_PRESSURE]==FALSE)
 			for(i=0;i<WX->N;i++)
-				WX->val[_VAPOR_PRESSURE][i] = calcVaporPressureFromMassMixingRatio(WX->val[_PRESSURE][i], WX->val[_MASS_MIXING_RATIO][i]);
+				WX->val[_VAPOR_PRESSURE][i] = calcVaporPressureFromMassMixingRatio(WX->val[_PRESSURE][i], WX->val[_MASS_MIXING_RATIO][i], WX->val[_SATURATION_MIXING_RATIO][i], WX->val[_SATURATION_VAPOR_PRESSURE][i]);
 		if(WX->populated[_RELATIVE_HUMIDITY]==FALSE){
 			for(i=0;i<WX->N;i++)
 				  WX->val[_RELATIVE_HUMIDITY][i] = 100.0*WX->val[_VAPOR_PRESSURE][i]/WX->val[_SATURATION_VAPOR_PRESSURE][i];
@@ -1124,8 +1191,9 @@ WEATHER_CONVERSION_ERROR setPressures(WEATHER_CONVERSION_VECTOR *WX){
 	double scale_height = 8500;
 	if(WX->populated[_PRESSURE]){
 		if(WX->populated[_POTENTIAL_TEMPERATURE]==FALSE)
-			for(i=0;i<WX->N;i++)
+			for(i=0;i<WX->N;i++){
 				WX->val[_POTENTIAL_TEMPERATURE][i] = calcPotentialTemperature(WX->val[_TEMPERATURE_K][i], WX->val[_PRESSURE][i],WX->standardPressure, FOREWARD);
+			}
 		WX->populated[_POTENTIAL_TEMPERATURE]=TRUE;
 	}
 	else if(WX->populated[_POTENTIAL_TEMPERATURE] && WX->populated[_TEMPERATURE_K]){
@@ -1329,8 +1397,9 @@ WEATHER_CONVERSION_ERROR humidityConversion(WEATHER_CONVERSION_VECTOR *WX){
 				WX->val[_MOLE_MIXING_RATIO][i] = 0.0;
 			}
 			else{
-				WX->val[_MOLE_MIXING_RATIO][i] = WX->val[_ENHANCEMENT_FACTOR][i]*WX->val[_RELATIVE_HUMIDITY][i]*
-												WX->val[_SATURATION_VAPOR_PRESSURE][i]/WX->val[_PRESSURE][i]/100.0;
+				WX->val[_MOLE_MIXING_RATIO][i] = calcMoleMixingRatio(WX->val[_ENHANCEMENT_FACTOR][i],
+					WX->val[_RELATIVE_HUMIDITY][i],	WX->val[_SATURATION_VAPOR_PRESSURE][i],
+					WX->val[_PRESSURE][i]);
 			}
 		}
 		WX->populated[_MOLE_MIXING_RATIO]=TRUE;
@@ -1356,8 +1425,11 @@ WEATHER_CONVERSION_ERROR humidityConversion(WEATHER_CONVERSION_VECTOR *WX){
 		WX->populated[_MOIST_AIR_DENSITY]=TRUE;
 	}
 	if(WX->populated[_MASS_MIXING_RATIO]==FALSE){
-		for(i=0;i<WX->N;i++)
-				WX->val[_MASS_MIXING_RATIO][i] = calcMassMixingRatio(WX->val[_PRESSURE][i],WX->val[_VAPOR_PRESSURE][i]);
+		for(i=0;i<WX->N;i++){
+				// WX->val[_MASS_MIXING_RATIO][i] = calcMassMixingRatio(WX->val[_PRESSURE][i],WX->val[_VAPOR_PRESSURE][i]);
+				WX->val[_MASS_MIXING_RATIO][i] = WX->val[_SATURATION_MIXING_RATIO][i] * WX->val[_RELATIVE_HUMIDITY][i] / 100.0;
+
+		}
 		WX->populated[_MASS_MIXING_RATIO]=TRUE;
 	}
 	if(WX->populated[_VIRTUAL_TEMPERATURE]==FALSE){
@@ -1368,7 +1440,8 @@ WEATHER_CONVERSION_ERROR humidityConversion(WEATHER_CONVERSION_VECTOR *WX){
 	}
 	if(WX->populated[_SPECIFIC_HUMIDITY]==FALSE){
 		for(i=0;i<WX->N;i++)
-			WX->val[_SPECIFIC_HUMIDITY][i] = calcSpecificHumidity(WX->val[_MASS_MIXING_RATIO][i]) ;
+			WX->val[_SPECIFIC_HUMIDITY][i] = calcSpecificHumidity(WX->val[_ABSOLUTE_HUMIDITY][i], WX->val[_MOIST_AIR_DENSITY][i], WX->val[_VAPOR_PRESSURE][i],
+			WX->val[_PRESSURE][i]) ;
 		WX->populated[_SPECIFIC_HUMIDITY]=TRUE;
 	}
 	if(WX->populated[_VIRTUAL_POTENTIAL_TEMPERATURE]==FALSE){
@@ -1485,5 +1558,11 @@ double speedOfSound(double T, double T_v, double P){
 };
 double _relError(double a, double b){
 	if((a==0.0)&&(b==0.0)) return 0.0;
-	return pow((a-b) / (fabs(a)>fabs(b)?a:b),2.0);
+	if(isinf(a) || isinf(b)) return 0.0;
+	if(isnan(a) || isnan(b)){
+		return 0.0;
+	}
+	if(a==0.0) return fabs(b);
+	if(b==0.0) return fabs(a);
+	return pow((a-b) / (fabs(a)>fabs(b)?a:b), 2.0);
 };
