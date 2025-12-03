@@ -8,7 +8,7 @@ CFLAGS = /W4 /EHsc /nologo /Od /Zi /DDEBUG /D__BASE_FILE_NAME__=\"$<\"
 LFLAGS = /NOLOGO /DEBUG
 
 # Source and header files
-SRCS = conversionVectorHelpers.c weatherConversion.c
+SRCS = conversionVectorHelpers.c weatherConversion.c conversionFieldStrings.c
 TST_SRC = converterTest.c
 DEPS = weatherConversion.h
 OBJS = conversionVectorHelpers.obj weatherConversion.obj US1976_Standard_Atmos_Table_8.obj

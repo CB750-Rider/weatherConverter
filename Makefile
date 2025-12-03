@@ -1,6 +1,6 @@
 CFLAGS += -Wall -fmessage-length=0 -fPIC
 LFLAGS += -lm
-SRCS = conversionVectorHelpers.c weatherConversion.c US1976_Standard_Atmos_Table_8.c
+SRCS = conversionVectorHelpers.c weatherConversion.c US1976_Standard_Atmos_Table_8.c conversionFieldStrings.c
 TST_SRC = converterTest.c
 DEPS = weatherConversion.h
 OBJS = $(SRCS:.c=.o)

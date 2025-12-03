@@ -50,189 +50,16 @@ SOFTWARE.
 
 WEATHER_CONVERSION_ERROR _weather_converter_global_return;
 
-const char *_weather_converter_field_names[_N_WEATHER_FIELDS] = {
-													"Temperature", /*0*/
-													"Temperature", /*1*/
-													"Temperature", /*2*/
-													"U wind", /*3*/
-													"V wind", /*4*/
-													"Wind Speed", /*5*/
-													"Wind Direction", /*6*/
-													"Pressure", /*7*/
-													"Potential Temperature", /*8*/
-													"Virtual Temperature", /*9*/
-													"Virtual Potential Temperature", /*10*/
-													"Saturation Vapor Pressure", /*11*/
-													"Saturation Mass Mixing Ratio", /*12*/
-													"Enhancement Factor", /*13*/
-													"Relative Humidity", /*14*/
-													"Vapor Pressure", /*15*/
-													"Potential Vapor Pressure", /*16*/
-													"Mole Mixing Ratio", /*17*/
-													"Mass Mixing Ratio", /*18*/
-													"Dew Point C", /*19*/
-													"Dew Point K", /*20*/
-													"Dew Point F", /*21*/
-													"Specific Humidity", /*22*/
-													"Absolute Humidity", /*23*/
-													"Moist Air Density", /*24*/
-													"Moist Air Number Density", /*25*/
-													"Water Vapor Number Density", /*26*/
-													"Geopotential Height", /*27*/
-													"Height Above Ground Level", /*28*/
-													"Height Above Mean Sea Level", /*29*/
-													"Dry Air Number Density", /*30*/
-													"Dry Air Density", /*31*/
-													"Speed of Sound", /*32*/
-													"Other Input Field"/*33*/};
-
-const char *_weather_converter_field_flags[_N_WEATHER_FIELDS] = {
-	"_TEMPERATURE_C", /* 0 Degrees C */
-	"_TEMPERATURE_K", /* 1 Kelvin */
-	"_TEMPERATURE_F", /* 2 Degrees F */
-	"_U_WIND", /* 3 meters / second*/
-	"_V_WIND",  /* 4 meters / second*/
-	"_WIND_SPEED",  /* 5 meters / second*/
-	"_WIND_DIRECTION", /* 6 degrees from N */
-	"_PRESSURE", /* 7 millibar */
-	"_POTENTIAL_TEMPERATURE", /* 8 Kelvin */
-	"_VIRTUAL_TEMPERATURE", /* 9 Kelvin */
-	"_VIRTUAL_POTENTIAL_TEMPERATURE", /* 10 Kelvin */
-	"_SATURATION_VAPOR_PRESSURE", /* 11 millibar */
-	"_SATURATION_MIXING_RATIO", /* 12 grams water vapor / kilogram dry air */
-	"_ENHANCEMENT_FACTOR", /* 13 unitless enhancement factor (non-ideal behavior of moist air) */
-	"_RELATIVE_HUMIDITY", /* 14 percent */
-	"_VAPOR_PRESSURE", /* 15 millibar */
-	"_POTENTIAL_VAPOR_PRESSURE", /* 16 millibar */
-	"_MOLE_MIXING_RATIO", /* 17 mole water vapor / mole moist air */
-	"_MASS_MIXING_RATIO", /* 18 grams water vapor / kilogram dry air */
-	"_DEW_POINT_C", /* 19 Kelvin */
-	"_DEW_POINT_K", /* 20 Kelvin */
-	"_DEW_POINT_F", /* 21 Kelvin */
-	"_SPECIFIC_HUMIDITY", /* 22 grams water vapor / kilogram moist air */
-	"_ABSOLUTE_HUMIDITY", /* 23 grams water vapor / meter^3 */
-	"_MOIST_AIR_DENSITY", /* 24 grams / meter^3 */
-	"_MOIST_AIR_NUMBER_DENSITY", /* 25 mole / meter^3 */
-	"_WATER_VAPOR_NUMBER_DENSITY", /* 26 mole / meter^3 */
-	"_GEOPOTENTIAL_HEIGHT", /* 27 meters */
-	"_HEIGHT_AGL", /* 28 meters */
-	"_HEIGHT_AMSL", /* 29 meters*/
-	"_DRY_AIR_NUMBER_DENSITY", /* 30 moles / meter^3 */
-	"_DRY_AIR_DENSITY", /* 31 grams / meter^3 */
-	"_SPEED_OF_SOUND", /* 32 meters / second */
-    "_OTHER_INPUT" /* 33 For any other field */};
-
-const char *_weather_converter_field_units_full[_N_WEATHER_FIELDS] = {
-													"degrees Celsius", /*0*/
-													"Kelvin", /*1*/
-													"degrees Fahrenheit", /*2*/
-													"meters / second", /*3*/
-													"meters / second", /*4*/
-													"meters / second", /*5*/
-													"degrees from North", /*6*/
-													"millibar", /*7*/
-													"Kelvin", /*8*/
-													"Kelvin", /*9*/
-													"Kelvin", /*10*/
-													"millibar", /*11*/
-													"grams water vapor / kilogram moist air", /*12*/
-													"unitless", /*13*/
-													"percent", /*14*/
-													"millibar", /*15*/
-													"millibar", /*16*/
-													"moles water vapor / mole moist air", /*17*/
-													"grams water vapor / kilogram moist air", /*18*/
-													"degrees Celsius", /*19*/
-													"Kelvin", /*20*/
-													"degrees Fahrenheit", /*21*/
-													"grams water vapor / kilogram moist air", /*22*/
-													"grams water vapor / meter^3", /*23*/
-													"grams / meter^3", /*24*/
-													"mole / meter^3",/*25*/
-													"mole / meter^3",/*26*/
-													"meters", /*27*/
-													"meters", /*28*/
-													"meters", /*29*/
-													"moles / meter^3", /*30*/
-													"grams / meter^3", /*31*/
-													"meters / second", /*32*/
-													"undefined"/*33*/};
-
-const char *_weather_converter_field_units[_N_WEATHER_FIELDS] = {
-													"°C", /*0*/
-													"K", /*1*/
-													"°F", /*2*/
-													"m/s", /*3*/
-													"m/s", /*4*/
-													"m/s", /*5*/
-													"°", /*6*/
-													"mb", /*7*/
-													"K", /*8*/
-													"K", /*9*/
-													"K", /*10*/
-													"mb", /*11*/
-													"g/kg", /*12*/
-													"<unitless>", /*13*/
-													"%%", /*14*/
-													"mb", /*15*/
-													"mb", /*16*/
-													"mol/mol", /*17*/
-													"g/kg", /*18*/
-													"°C", /*19*/
-													"K", /*20*/
-													"°F", /*21*/
-													"g/kg", /*22*/
-													"g/m^3", /*23*/
-													"g/m^3", /*24*/
-													"mol/m^3",/*25*/
-													"mol/m^3",/*26*/
-													"m", /*27*/
-													"m", /*28*/
-													"m", /*29*/
-													"mol/m^3", /*30*/
-													"g/m^3", /*31*/
-													"m/s", /*32*/
-													"----"/*33*/};
-
-const char *_weather_converter_site_setting_names[_N_WEATHER_SITE_SPECIFIC_SETTINGS]  = {
-		"Standard Pressure",
-		"CO2 Parts Per Million",
-		"Latitude",
-		"Surface Height AMSL",
-		"Surface Pressure",
-		"Surface Temperature"
-};
-const char *_weather_converter_site_setting_flags[_N_WEATHER_SITE_SPECIFIC_SETTINGS] = {
-		"_STANDARD_PRESSURE", /* Standard pressure to use (in mb) default is 1000 */
-		"_XCO2", /* CO2 mole mixing ratio in ppm default is 390.0*/
-		"_SITE_LATITUDE",  /* In degrees, default is 35 */
-		"_SURFACE_HEIGHT", /* Elevation in meters above mean sea level, default is 0 */
-		"_SURFACE_PRESSURE", /* Surface pressure at 0 m AMSL in mb, default is 1013.25 */
-		"_SURFACE_TEMPERATURE" /* Surface pressure at 0 m AMSL in mb, default is 1013.25 */
-};
-const char *_weather_converter_site_units_full[_N_WEATHER_SITE_SPECIFIC_SETTINGS] = {
-		"millibars",
-		"parts per million",
-		"degrees latitutude",
-		"meters above mean sea level",
-		"millibars",
-		"Kelvin"
-};
-const char *_weather_converter_site_units[_N_WEATHER_SITE_SPECIFIC_SETTINGS] = {
-		"mb",
-		"ppm",
-		"deg",
-		"m",
-		"mb",
-		"K"
-};
 double _weather_converter_site_defaults[_N_WEATHER_SITE_SPECIFIC_SETTINGS] = {
 		1000.0, /* Standard pressure */
-		390.0, /* CO2 ppm */
+		425.0, /* CO2 ppm */
 		35.0, /* Site Latitutde */
 		0.0, /* Site surface elevation AMSL*/
 		1013.25, /* Surface pressure */
-		273.15 /* Surface temperature */
+		273.15, /* Surface temperature */
+		1930.0, /* CH4 ppb */
+		339.0,  /* N2O ppb */
+		12.25, /* SF6 ppt */ 
 };
 
 static double lowPressureCalcMassMixingRatio(double P, double vp);
@@ -306,9 +133,10 @@ double calcDewpoint(double RH, double SVP){
 	 *  use Newton's method to improve the inversion to machine precision. */
 	double term1, dewPoint, alpha, num, denom;
 
-	/* In the limit that RH-> we get an indeterminate form,
-	taking l'hopital's rule once gives us T = -237.3*/
-	if(RH<=0.0) return -237.3;
+	/* In the limit that RH->0 we get an indeterminate form,
+	taking l'hopital's rule once gives us T = -237.3 
+	but we are returning DewPoint in K so it must be 0.0*/
+	if(RH<=0.0) return 0.0;
 
 	term1 = log(SVP*RH/611.2);
 	dewPoint = 243.75*term1/(17.67-term1)+273.15;
@@ -319,31 +147,45 @@ double calcDewpoint(double RH, double SVP){
 	/* We start off close so 4 iterations of Newton's method is plenty. */
 	num = (alpha-goffGratch(dewPoint)); /* One */
 	denom = DgoffGratch_dT(dewPoint);
-	if(is_unstable(num,denom,dewPoint))
+	if(is_unstable(num,denom,dewPoint)){	
+		if(dewPoint < 0.0)
+			dewPoint = 0.0;
 		return dewPoint;
+	}
 	dewPoint += num/denom;
 
 	num = (alpha-goffGratch(dewPoint)); /* Two */
 	denom = DgoffGratch_dT(dewPoint);
-	if(is_unstable(num,denom,dewPoint))
+	if(is_unstable(num,denom,dewPoint)){	
+		if(dewPoint < 0.0)
+			dewPoint = 0.0;
 		return dewPoint;
+	}
 	dewPoint += num/denom;
 
 	num = (alpha-goffGratch(dewPoint)); /* Three */
 	denom = DgoffGratch_dT(dewPoint);
-	if(is_unstable(num,denom,dewPoint))
+	if(is_unstable(num,denom,dewPoint)){	
+		if(dewPoint < 0.0)
+			dewPoint = 0.0;
 		return dewPoint;
+	}
 	dewPoint += num/denom;
 
 	num = (alpha-goffGratch(dewPoint)); /* Four */
 	denom = DgoffGratch_dT(dewPoint);
-	if(is_unstable(num,denom,dewPoint))
+	if(is_unstable(num,denom,dewPoint)){	
+		if(dewPoint < 0.0)
+			dewPoint = 0.0;
 		return dewPoint;
+	}
 	dewPoint += num/denom;
 
 	/*for(i=0;i<4;i++)
 		dewPoint += (alpha-goffGratch(dewPoint))/DgoffGratch_dT(dewPoint);*/
-
+	
+	if(dewPoint < 0.0)
+		dewPoint = 0.0;
 	return dewPoint;
 }
 double goffGratch(double T){
@@ -492,6 +334,25 @@ double calcVirtualTemperature(double T, double mr, CALCULATION_DIRECTION D){
 	else
 		return T / (1.0 + 0.61 * mr/1000.0);
 }
+/*
+double calcVirtualTemperature(double T_K, double P, double DP_K){
+	/ *
+	Based on https://www.weather.gov/media/epz/wxcalc/virtualTemperature.
+	pdf
+	
+	Inputs
+	T Temp in K
+	P Press in mb
+	DP DewPoint in K
+	
+	* /
+	double DP_C = KtoC(DP_K);
+	double num1 = 7.5*DP_C;
+	double denom1 = DP_K;
+	double num2 = 6.11 * pow(10.0, num1/denom1);
+	double denom2 = 1.0 - 0.379*num2 / P;
+	return T_K / denom2;
+} */
 double calcMoistAirDensity(double T, double P, double xv, double xCO2){
 	/* Calculate the moist air density using the method from Ciddor's paper.
 	 * Inputs:
@@ -527,19 +388,19 @@ double calcDryAirDensity(double T, double P, double xCO2){
 	 * P	Pressure (mb)
 	 * xCO2 Mole mixing ratio of CO2 to dry air (ppm) */
 	double Ma, R=8.314510; /* Mass of dry air, gas constant */
-	double molar_mass[] = {28.0134, 15.999, 15.999*2.0, 39.948, 4.002602, 1.008};
+	// double molar_mass[] = {28.0134, 15.999, 15.999*2.0, 39.948, 4.002602, 1.008};
 
 	if (P > 3.7338e-3){
 		Ma = 28.9635 + 12.011e-6*(xCO2 - 400); /* Molar mass of dry air */
 		return (Ma*(100*P)/T/R/AVOGADRO_CONSTANT);
 	}
 	else{
-		return (molar_mass[0] * moles_N2_P(P)
-		+ molar_mass[1] * moles_O_P(P)
-		+ molar_mass[2] * moles_O2_P(P)
-		+ molar_mass[3] * moles_Ar_P(P)
-		+ molar_mass[4] * moles_He_P(P)
-		+ molar_mass[5] * moles_H_P(P));
+		return (MOLAR_MASS_N2 * moles_N2_P(P)
+			  + MOLAR_MASS_O  * moles_O_P(P)
+			  + MOLAR_MASS_O2 * moles_O2_P(P)
+			  + MOLAR_MASS_Ar * moles_Ar_P(P)
+			  + MOLAR_MASS_He * moles_He_P(P)
+			  + MOLAR_MASS_H  * moles_H_P(P));
 	}
 }
 double dryAirNumberDensity(double T, double P){
@@ -918,7 +779,7 @@ double integrateColumnWaterDensity(WEATHER_CONVERSION_VECTOR *WX,double z0, doub
 	}
 }
 double integrateColumnWaterNumberDensity(WEATHER_CONVERSION_VECTOR *WX, double z0, double z1) {
-	return integrateColumnWaterDensity(WX, z0, z1) / WATER_MOLAR_MASS;
+	return integrateColumnWaterDensity(WX, z0, z1) / MOLAR_MASS_H2O;
 }
 double integrateColumnMoistAirDensity(WEATHER_CONVERSION_VECTOR *WX, double z0, double z1) {
 	/* Integrate the Column Moist Air Density */
@@ -1125,13 +986,8 @@ WEATHER_CONVERSION_ERROR setAllFields(WEATHER_CONVERSION_VECTOR *WX){
 		WX->moistAirArealNumberDensity = integrateColumnMoistAirNumberDensity(WX, 0.0, WX->val[_HEIGHT_AGL][WX->N - 1]);
 	}
 	/* Compute the speed of sound, if it wasn't provided. */
-	if(WX->populated[_SPEED_OF_SOUND]==FALSE){
-		if(WX->populated[_VIRTUAL_TEMPERATURE] && WX->populated[_TEMPERATURE_K] && WX->populated[_PRESSURE]){
-			for(i=0;i<WX->N;i++)
-				WX->val[_SPEED_OF_SOUND][i] = speedOfSound(WX->val[_TEMPERATURE_K][i], WX->val[_VIRTUAL_TEMPERATURE][i], WX->val[_PRESSURE][i]);
-			WX->populated[_SPEED_OF_SOUND] = TRUE;
-		}
-	}
+	WX->is_set = TRUE;
+	setSpeedOfSound(WX);
 	return retVal;
 }
 WEATHER_CONVERSION_ERROR setTemperatures(WEATHER_CONVERSION_VECTOR *WX){
@@ -1325,11 +1181,9 @@ WEATHER_CONVERSION_ERROR setHeights(WEATHER_CONVERSION_VECTOR *WX){
 		/* Estimate height from the hydrostatic equation */
 		if(WX->populated[_PRESSURE] == FALSE) 	return NO_PRESSURE_PRESENT;
 		if(WX->populated[_MOIST_AIR_DENSITY]==FALSE) return NO_HUMIDITY_PRESENT;
-		WX->val[_HEIGHT_AGL][0] = 0.0;
-		WX->val[_HEIGHT_AMSL][0] = WX->surfaceHeight;
-		WX->val[_GEOPOTENTIAL_HEIGHT][0] =WX->val[_HEIGHT_AMSL][0]/(1.0 + WX->val[_HEIGHT_AMSL][0]/R);
-		for(i=1;i<WX->N;i++){
-			WX->val[_HEIGHT_AMSL][i]  = WX->val[_HEIGHT_AMSL][i-1]  + hydrostaticDZ(WX,i);
+		printf("weatherConversion.c:setHeights(): WARNING No heights were given. All heights are derived from a simplified version of the US1976 standard atmosphere pressure vs height table.\n");
+		for(i=0;i<WX->N;i++){
+			WX->val[_HEIGHT_AMSL][i]  = standardAtmosAltitudeAtPressure(WX->val[_PRESSURE][i]);
 			WX->val[_GEOPOTENTIAL_HEIGHT][i]= WX->val[_HEIGHT_AMSL][i]/(1.0 + WX->val[_HEIGHT_AMSL][i]/R);
 			WX->val[_HEIGHT_AGL][i] = WX->val[_HEIGHT_AMSL][i] - WX->surfaceHeight;
 		}
@@ -1367,6 +1221,92 @@ WEATHER_CONVERSION_ERROR setWinds(WEATHER_CONVERSION_VECTOR *WX){
 		return NO_WIND_PRESENT;
 
 	return WEATHER_CONVERSION_SUCCESS;
+}
+double _computeSpeedOfSoundBeta(double T_C, double RH){
+	double beta_T=1.0, beta_rh=1.0;
+	T_C = fabs(T_C);
+	if(T_C > 35){
+		if(T_C < 45){
+			beta_T = (T_C - 35.0) / 10.0;
+		}
+		else
+			beta_T = 0.0;
+	}
+	if(RH < 6.0){
+		if(RH > 3.0){
+			beta_rh = (RH - 3.0) / 3.0;
+		}
+		else{
+			beta_rh = 0.0;
+		}
+	}
+	return beta_T * beta_rh;
+}
+WEATHER_CONVERSION_ERROR setSpeedOfSound(WEATHER_CONVERSION_VECTOR *WX){
+	unsigned int i, j;
+	double c_1, c_2, beta;
+
+	// Only set sound if it isn't set.
+	if(WX->is_set){
+		if(WX->populated[_SPEED_OF_SOUND]==FALSE){
+			if(WX->populated[_VIRTUAL_TEMPERATURE] && WX->populated[_TEMPERATURE_K] && WX->populated[_PRESSURE]){
+				for(i=0;i<WX->N;i++){
+					/* This method accounts for humidity variations, but becomes erronious at low humidity or extreme temperatures */
+					c_1 = speedOfSound(WX->val[_TEMPERATURE_K][i], WX->val[_VIRTUAL_TEMPERATURE][i]);
+					/* This method is simpler, but is reliable at extreme conditions */
+					c_2 = ambientSpeedOfSound(
+						WX->val[_TEMPERATURE_K][i], 
+						WX->val[_MOIST_AIR_MOLAR_MASS][i]);
+					/* TODO Switch over to this other method. */
+					beta = _computeSpeedOfSoundBeta(
+						WX->val[_TEMPERATURE_C][i],
+						WX->val[_RELATIVE_HUMIDITY][i]
+					);
+					WX->val[_SPEED_OF_SOUND][i] = beta*c_1 + (1.0 - beta)*c_2;
+
+				}
+
+				WX->populated[_SPEED_OF_SOUND] = TRUE;
+			}
+		}
+		for(j=0; j<WX->speedOfSoundDispersion.M; j++){
+			if(WX->speedOfSoundDispersion.allocated[j] == TRUE){
+				for(i=0; i<WX->N; i++){
+					WX->speedOfSoundDispersion.val[j][i] = 
+						speedOfSoundDispersion(
+							WX->val[_SPEED_OF_SOUND][i],
+							WX->val[_PRESSURE][i],
+							WX->val[_TEMPERATURE_K][i],
+							WX->speedOfSoundDispersion.X[j]
+						);
+				}
+				WX->speedOfSoundDispersion.populated[j] = TRUE;
+			}
+		}
+	}
+	return WEATHER_CONVERSION_SUCCESS;
+}
+double speedOfSoundDispersion(double c, double P, double T_K, double f){
+	/* From Louis C. Sutherland, Henry E. Bass; Atmospheric absorption in the atmosphere up to 160 km. J. Acoust. Soc. Am. 1 March 2004; 115 (3): 1012–1032. https://doi.org/10.1121/1.1631937
+	
+	c is the dispersionless speed of sound in m/s
+	P is pressure in mb
+	T_K is temperature in Kelvin
+	f is frequency in Hz
+	*/
+	
+	// Eq (17)
+	double S = 117.0, T0 = 293.15, mu0 = 18.192;
+	double mu = mu0*sqrt(T_K/T0)*(1+S/T0)/(1+S/T_K);
+	// Nu from Eq (5) Note that in the paper, 3*P is in Pascals,
+	// but our pressure is in mb, so we have 300.0*P
+	double nu = 8.0*M_PI*f*mu / (300.0 * P);
+
+	// Equation (23)
+	double lg_nu = log10(nu);
+	double Z = -0.536 + 1.082*lg_nu -0.366*lg_nu*lg_nu - 0.037*lg_nu*lg_nu*lg_nu;
+	double out = c*(pow(10.0, Z) + 1);
+	return out;
 }
 WEATHER_CONVERSION_ERROR humidityConversion(WEATHER_CONVERSION_VECTOR *WX){
 	unsigned int i;
@@ -1433,9 +1373,20 @@ WEATHER_CONVERSION_ERROR humidityConversion(WEATHER_CONVERSION_VECTOR *WX){
 		WX->populated[_MASS_MIXING_RATIO]=TRUE;
 	}
 	if(WX->populated[_VIRTUAL_TEMPERATURE]==FALSE){
-		for(i=0;i<WX->N;i++)
-			WX->val[_VIRTUAL_TEMPERATURE][i] = calcVirtualTemperature(WX->val[_TEMPERATURE_K][i],
-														WX->val[_MASS_MIXING_RATIO][i],FOREWARD);
+		for(i=0;i<WX->N;i++){
+			WX->val[_VIRTUAL_TEMPERATURE][i] = calcVirtualTemperature(
+				WX->val[_TEMPERATURE_K][i],
+				WX->val[_MASS_MIXING_RATIO][i],
+				FOREWARD
+			);
+			/*
+			WX->val[_VIRTUAL_TEMPERATURE][i] = calcVirtualTemperature(
+				WX->val[_TEMPERATURE_K][i],
+				WX->val[_PRESSURE][i],
+				WX->val[_DEW_POINT_K][i]);
+			*/
+
+		}
 		WX->populated[_VIRTUAL_TEMPERATURE]=TRUE;
 	}
 	if(WX->populated[_SPECIFIC_HUMIDITY]==FALSE){
@@ -1457,7 +1408,7 @@ WEATHER_CONVERSION_ERROR humidityConversion(WEATHER_CONVERSION_VECTOR *WX){
 	}
 	if (WX->populated[_WATER_VAPOR_NUMBER_DENSITY] == FALSE) {
 		for (i = 0; i<WX->N; i++)
-			WX->val[_WATER_VAPOR_NUMBER_DENSITY][i] = WX->val[_ABSOLUTE_HUMIDITY][i] / WATER_MOLAR_MASS;
+			WX->val[_WATER_VAPOR_NUMBER_DENSITY][i] = WX->val[_ABSOLUTE_HUMIDITY][i] / MOLAR_MASS_H2O;
 		WX->populated[_WATER_VAPOR_NUMBER_DENSITY] = TRUE;
 	}
 	if (WX->populated[_DRY_AIR_NUMBER_DENSITY] == FALSE){
@@ -1474,85 +1425,91 @@ WEATHER_CONVERSION_ERROR humidityConversion(WEATHER_CONVERSION_VECTOR *WX){
 		}
 		WX->populated[_MOIST_AIR_NUMBER_DENSITY] = TRUE;
 	}
+	if (WX->populated[_MOIST_AIR_MOLAR_MASS] == FALSE) {
+		for (i = 0; i<WX->N; i++){
+			WX->val[_MOIST_AIR_MOLAR_MASS][i] = moistAirMolarMass(
+				WX->val[_TEMPERATURE_K][i],
+				WX->val[_PRESSURE][i],
+				WX->val[_WATER_VAPOR_NUMBER_DENSITY][i],
+				WX->xCO2);
+		}
+		WX->populated[_MOIST_AIR_MOLAR_MASS] = TRUE;
+	}
 	return WEATHER_CONVERSION_SUCCESS;
 }
-double standardAtmosAltitudeAtPressure(double P){
-	/* NOAA 1976 Standard atmosphere table from Jacobson Fundamentals of
-	 * atmospheric modeling */
-static double alt[] = {
-				  0.0,   0.1,   0.2,   0.3,   0.4,   0.5,   0.6,   0.7,   0.8,   0.9,
-				  1.0,   1.5,   2.0,   2.5,   3.0,   3.5,   4.0,   4.5,   5.0,   5.5,
-				  6.0,   6.5,   7.0,   7.5,   8.0,   8.5,   9.0,   9.5, 10.0, 11.0,
-				12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0, 21.0,
-				22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0, 31.0,
-				32.0, 33.0, 34.0, 35.0, 36.0, 37.0, 38.0, 39.0, 40.0, 41.0,
-				42.0, 43.0, 44.0, 45.0, 46.0, 47.0, 48.0, 49.0, 50.0, 55.0,
-				60.0, 65.0, 70.0, 75.0, 80.0, 85.0, 90.0, 95.0, 100.0};
-static double prs[] = {
-				1013.25, 1001.20, 989.45, 977.72, 966.11, 954.61, 943.22,   931.94,  920.77, 909.71,
-				  898.80,   845.59,   795.0,   746.9,   701.2,   657.8,   616.6,     577.5,    540.5,   505.4,
-				    472.2,     440.7,   411.1,   383.0,   356.5,   331.5,   308.0,     285.8,    265.0, 227.0,
-				    194.0,     165.8,   141.7,   121.1,   103.5,     88.5,     75.7,       64.7,      55.3, 47.3,
-				      40.5,       34.7,     29.7,    25.5,      21.9,     18.8,     16.2,       13.9,      12.0, 10.3,
-				      8.89,       7.67,     6.63,    5.75,      4.99,     4.33,     3.77,       3.29,      2.87, 2.51,
-				      2.20,       1.93,     1.69,    1.49,      1.31,     1.16,     1.02,     0.903,    0.798, 0.425,
-				    0.220,     0.109, 0.0522,0.0239,  0.0105, 0.0045, 0.0018, 0.00076,0.00032};
-int N = sizeof(prs)/sizeof(double),i;
-double gamma;
 
-/* Find the interval that we are in. */
-for(i=1;i<N-1;i++){
-	if(P>prs[i]) break;
+double specificHeatRatio(double T){
+	/*
+	T is absolute temperature in Kelvin
+
+	From Louis C. Sutherland, Henry E. Bass; Atmospheric absorption in the atmosphere up to 160 km. J. Acoust. Soc. Am. 1 March 2004; 115 (3): 1012–1032. https://doi.org/10.1121/1.1631937
+
+	Equation (38)
+	*/
+	double A[] = {1.371, 2.460e-4, -6.436e-7, 5.2e-10, 1.796e-13, 2.182e-17};
+	double out = A[0] + 
+				 A[1]*T + 
+				 A[2]*T*T + 
+				 A[3]*T*T*T + 
+				 A[4]*T*T*T*T + 
+				 A[5]*T*T*T*T*T;
+
+	return out;
 }
+double moistAirMolarMass(double T, double P, double xv, double xCO2){
+	/*
+	Return the molar mass of moist air based on the 
+	moles / m^3 of water vapor and pressure. 
+	
+	Inputs:
+		T	Temperatuer (K)
+	 	P	Pressure (mb)
+	 	xv 	Mole mixing ratio of water vapor to moist air
+	 	xCO2	Mole mixing ratio of CO2 to dry air (ppm) 
 
-/* Get the scaling term */
-gamma = log(P/prs[i-1])/log(prs[i]/prs[i-1]);
-
-/* Return the value in meters instead of km. */
-return 1000.0*(alt[i]*gamma + alt[i-1]*(1.0 - gamma));
-}
-double standardAtmosPressureAtAltitude(double Z) {
-	/* NOAA 1976 Standard atmosphere table from Jacobson Fundamentals of
-	* atmospheric modeling */
-	static double alt[] = {
-		0.0,   0.1,   0.2,   0.3,   0.4,   0.5,   0.6,   0.7,   0.8,   0.9,
-		1.0,   1.5,   2.0,   2.5,   3.0,   3.5,   4.0,   4.5,   5.0,   5.5,
-		6.0,   6.5,   7.0,   7.5,   8.0,   8.5,   9.0,   9.5, 10.0, 11.0,
-		12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0, 21.0,
-		22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0, 31.0,
-		32.0, 33.0, 34.0, 35.0, 36.0, 37.0, 38.0, 39.0, 40.0, 41.0,
-		42.0, 43.0, 44.0, 45.0, 46.0, 47.0, 48.0, 49.0, 50.0, 55.0,
-		60.0, 65.0, 70.0, 75.0, 80.0, 85.0, 90.0, 95.0, 100.0 };
-	static double prs[] = {
-		1013.25, 1001.20, 989.45, 977.72, 966.11, 954.61, 943.22,   931.94,  920.77, 909.71,
-		898.80,   845.59,   795.0,   746.9,   701.2,   657.8,   616.6,     577.5,    540.5,   505.4,
-		472.2,     440.7,   411.1,   383.0,   356.5,   331.5,   308.0,     285.8,    265.0, 227.0,
-		194.0,     165.8,   141.7,   121.1,   103.5,     88.5,     75.7,       64.7,      55.3, 47.3,
-		40.5,       34.7,     29.7,    25.5,      21.9,     18.8,     16.2,       13.9,      12.0, 10.3,
-		8.89,       7.67,     6.63,    5.75,      4.99,     4.33,     3.77,       3.29,      2.87, 2.51,
-		2.20,       1.93,     1.69,    1.49,      1.31,     1.16,     1.02,     0.903,    0.798, 0.425,
-		0.220,     0.109, 0.0522,0.0239,  0.0105, 0.0045, 0.0018, 0.00076,0.00032 };
-	int N = sizeof(prs) / sizeof(double), i;
-	double gamma;
-	Z /= 1000.0; /* Convert to km*/
-
-	/* Find the interval that we are in. */
-	for (i = 1; i<N - 1; i++) {
-		if (Z<alt[i]) break;
+	Return:
+	molar mass in g/mol
+	*/
+	double numerator = calcMoistAirDensity(T, P, xv, xCO2);
+	double denominator = moistAirNumberDensity(T, P, xv);
+	double out = numerator / denominator;	
+	if(isnan(out) || isinf(out)){
+		return 0.0;
 	}
-
-	/* Get the scaling term */
-	gamma = log(prs[i] / prs[i - 1]) / (alt[i] - alt[i - 1]);
-
-	/* Return the value in meters instead of km. */
-	return prs[i-1]*exp(gamma*(Z - alt[i-1]));
+	return out;
 }
-double speedOfSound(double T, double T_v, double P){
+double ambientSpeedOfSound(double T, double M){
+	/*
+
+	From Louis C. Sutherland, Henry E. Bass; Atmospheric absorption in the atmosphere up to 160 km. J. Acoust. Soc. Am. 1 March 2004; 115 (3): 1012–1032. https://doi.org/10.1121/1.1631937
+
+	Equation (37)
+
+	T is absolute temperature in Kelvin
+	M is the Molar mass of air in kg/kmol
+	*/
+	double gamma = specificHeatRatio(T);
+	double out = sqrt(gamma*1000.0*GAS_CONSTANT*T/M);
+	return out;
+}
+double speedOfSound(double T, double T_v){
 	/* From Atmospheric Effects on the Speed of Sound
 	E.A. Dean, 1979 
+
+	Inputs:
+	T	Dry-Bulb Temperature in Kelvin
+	T_v	Virtual Temperature in Kelvin
+
+	Note that errors increase at low humidity and temperatures outside of -40 to 40 C.
 	*/
 
+	// Convert to centegrade
+	T = KtoC(T);
+	T_v = KtoC(T_v);
+
+	// Equation (73)
 	double T_s = 0.825*T_v + 0.174*T + 273.0 - 6e-5*T*T;
+	// Equation (1)
 	double c = 20.06*sqrt(T_s);
 	return c;
 };

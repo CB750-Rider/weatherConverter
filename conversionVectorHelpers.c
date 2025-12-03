@@ -57,6 +57,11 @@ char *_weather_converter_error_messages[N_WEATHER_CONVERSION_ERRORS] = {
 static unsigned int N_vector = 0;
 static WEATHER_CONVERSION_VECTOR **initialized_vectors=NULL;
 FILE *weather_converter_error_stream = NULL;
+static double defaultSpeedOfSoundFrequencies[] = {0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0};
+static unsigned int M_defaultFrequencies = (unsigned int) sizeof(defaultSpeedOfSoundFrequencies) / sizeof(double);
+
+WEATHER_CONVERSION_ERROR _initializeMofN(WEATHER_CONVERSION_VECTOR *WX, unsigned int M_, double *frequencies);
+WEATHER_CONVERSION_ERROR _freeSpeedOfSound(WEATHER_CONVERSION_VECTOR *WX);
 
 /* Initialization tracking functions */
 static BOOLEAN isAlreadyInitialized(WEATHER_CONVERSION_VECTOR *WX){
@@ -154,6 +159,9 @@ WEATHER_CONVERSION_ERROR openWeatherConversionVector(WEATHER_CONVERSION_VECTOR *
 	WX->N = N;
 	WX->standardPressure = _weather_converter_site_defaults[_STANDARD_PRESSURE];
 	WX->xCO2 = _weather_converter_site_defaults[_XCO2];
+	WX->xCH4 = _weather_converter_site_defaults[_XCH4];
+	WX->xN2O = _weather_converter_site_defaults[_XN2O];
+	WX->xSF6 = _weather_converter_site_defaults[_XSF6];
 	WX->surfaceHeight = _weather_converter_site_defaults[_SURFACE_HEIGHT];
 	WX->surfacePressure = _weather_converter_site_defaults[_SURFACE_PRESSURE];
 	WX->latitude = _weather_converter_site_defaults[_SITE_LATITUDE];
@@ -163,11 +171,59 @@ WEATHER_CONVERSION_ERROR openWeatherConversionVector(WEATHER_CONVERSION_VECTOR *
 		WX->allocated[fi] = TRUE;
 		WX->populated[fi] = FALSE;
 	}
+	_wcCheck(_initializeMofN(WX, M_defaultFrequencies, defaultSpeedOfSoundFrequencies));
 	WX->quiet = FALSE;
+	WX->is_set = FALSE;
 	return WEATHER_CONVERSION_SUCCESS;
+}
+WEATHER_CONVERSION_ERROR _initializeMofN(WEATHER_CONVERSION_VECTOR *WX, unsigned int M_, double *frequencies){
+	/* 
+	Frequencies should be in Hz
+	*/
+	unsigned int i;
+	size_t M = (size_t)M_;
+	size_t N = (size_t)WX->N;
+	WX->speedOfSoundDispersion.M = M_;
+	WX->speedOfSoundDispersion.N = WX->N;
+	WX->speedOfSoundDispersion.allocated = (unsigned int *)malloc(sizeof(unsigned int)*M);
+	WX->speedOfSoundDispersion.populated = (unsigned int *)malloc(sizeof(unsigned int)*M);
+	WX->speedOfSoundDispersion.X = (double *)malloc(sizeof(double)*M);
+	memcpy(WX->speedOfSoundDispersion.X, frequencies, sizeof(double)*M);
+	WX->speedOfSoundDispersion.val = (double **)malloc(sizeof(double *)*M);
+	for(i=0;i<M;i++){
+		WX->speedOfSoundDispersion.val[i] = (double *)malloc(sizeof(double)*N);
+		WX->speedOfSoundDispersion.allocated[i] = TRUE;
+	}
+	return WEATHER_CONVERSION_SUCCESS;
+}
+WEATHER_CONVERSION_ERROR _freeSpeedOfSound(WEATHER_CONVERSION_VECTOR *WX){
+	unsigned int i;
+
+	/* Clear out existing versions*/
+	for(i=0; i<WX->speedOfSoundDispersion.M; i++){
+		if(WX->speedOfSoundDispersion.allocated[i]){
+			free(WX->speedOfSoundDispersion.val[i]);
+			WX->speedOfSoundDispersion.allocated[i] = FALSE;
+		}
+	}
+	free(WX->speedOfSoundDispersion.allocated);
+	free(WX->speedOfSoundDispersion.populated);
+	free(WX->speedOfSoundDispersion.val);
+	free(WX->speedOfSoundDispersion.X);
+
+	return WEATHER_CONVERSION_SUCCESS;
+}
+WEATHER_CONVERSION_ERROR setSpeedOfSoundFrequencies(WEATHER_CONVERSION_VECTOR *WX, unsigned int M, double *frequencies){
+	_wcCheck(_freeSpeedOfSound(WX));
+
+	/* Re-initialize */
+	_wcCheck(_initializeMofN(WX, M, frequencies));
+
+	return setSpeedOfSound(WX);
 }
 WEATHER_CONVERSION_ERROR freeWeatherConversionVector(WEATHER_CONVERSION_VECTOR *WX){
 	WEATHER_CONVERTER_FIELD fi;
+	_freeSpeedOfSound(WX);
 	for(fi=0;fi<_N_WEATHER_FIELDS;fi++){
 		if(WX->allocated[fi])
 			free(WX->val[fi]);
