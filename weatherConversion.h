@@ -60,7 +60,15 @@ typedef enum{
 } BOOLEAN;
 #endif
 
-#define WATER_MOLAR_MASS 18.015261322024042
+// #define MOLAR_MASS_H2O 18.015261322024042
+#define MOLAR_MASS_H2O 18.0153 // https://webbook.nist.gov/cgi/cbook.cgi?ID=C7732185&Mask=200
+#define MOLAR_MASS_N2 28.0134 // https://webbook.nist.gov/cgi/cbook.cgi?Formula=N2&NoIon=on&Units=SI
+#define MOLAR_MASS_O 15.9994 // https://webbook.nist.gov/cgi/cbook.cgi?Formula=O&NoIon=on&Units=SI
+#define MOLAR_MASS_O2 31.9988 // https://webbook.nist.gov/cgi/cbook.cgi?ID=7782-44-7
+#define MOLAR_MASS_Ar 39.948 // https://webbook.nist.gov/cgi/cbook.cgi?Formula=Ar&NoIon=on&Units=SI
+#define MOLAR_MASS_He 4.002602 // https://pubchem.ncbi.nlm.nih.gov/compound/nitrogen
+#define MOLAR_MASS_H 1.00794 // https://pubchem.ncbi.nlm.nih.gov/compound/nitrogen
+
 #define AVOGADRO_CONSTANT 6.02214076e23
 #define GAS_CONSTANT 8.314598
 // Using dry air molar mass from US1976 with adjustment for higher CO2 concentrations
@@ -118,7 +126,8 @@ typedef enum {
 	_DRY_AIR_NUMBER_DENSITY, /* 30 moles / meter^3 */
 	_DRY_AIR_DENSITY, /* 31 grams / meter^3 */
 	_SPEED_OF_SOUND, /* 32 meters / second */
-	_OTHER_INPUT, /* 33 Anything ... */
+	_MOIST_AIR_MOLAR_MASS, /* 33 g / mol */
+	_OTHER_INPUT, /* 34 Anything ... */
 	_N_WEATHER_FIELDS
 } WEATHER_CONVERTER_FIELD;
 
@@ -140,11 +149,14 @@ typedef enum{
 typedef enum{
 	/* Verify default values in WeatherConversion.c*/
 	_STANDARD_PRESSURE, /* Standard pressure to use (in mb) default is 1000 */
-	_XCO2, /* CO2 mole mixing ratio in ppm default is 390.0*/
+	_XCO2, /* CO2 mole mixing ratio in ppm default is 425.0*/
 	_SITE_LATITUDE,  /* In degrees, default is 35 */
 	_SURFACE_HEIGHT, /* Elevation in meters above mean sea level, default is 0 */
 	_SURFACE_PRESSURE, /* Surface pressure at 0 m AMSL in mb, default is 1013.25 */
 	_SURFACE_TEMPERATURE, /* Surface temperature in Kelvin, default is 273.15 K (0° C)*/
+	_XCH4, /* CH4 mixing ratio in ppb default is 1930.0 */ 
+	_XN2O, /* N2O mixing ratio in ppb default is 339.0 */
+	_XSF6, /* SF6 mixing ratio in ppt default is 12.25 */
 	_N_WEATHER_SITE_SPECIFIC_SETTINGS
 } SITE_SPECIFIC_SETTINGS;
 
@@ -176,6 +188,15 @@ typedef struct{
 } WEATHER_CONVERSION_FUNCTIONS;
  */
 
+ typedef struct{
+	unsigned int M;
+	unsigned int N;
+	double **val;
+	double *X;
+	unsigned int *allocated;
+	unsigned int *populated;
+ } M_BY_N_ARRAY;
+
 typedef struct{
 	unsigned int N;
 	double *val[_N_WEATHER_FIELDS];
@@ -183,6 +204,9 @@ typedef struct{
 	unsigned int populated[_N_WEATHER_FIELDS];
 	double standardPressure; /* in millibars */
 	double xCO2; /* in ppm */
+	double xCH4; /* in ppb */
+	double xN2O; /* in ppb */
+	double xSF6; /* in ppt */
 	double vaporArealDensity; /* For the column in g / m^2 */
 	double vaporArealNumberDensity; /* For the column in mol / m^2 */
 	double moistAirArealDensity; /* For the column in g / m^2 */
@@ -192,6 +216,8 @@ typedef struct{
 	double surfacePressure; /* in mb */
 	double surfaceTemperature; /* in Kelvin */
 	int quiet; /* Suppress warning-level messages */
+	M_BY_N_ARRAY speedOfSoundDispersion;
+	int is_set; /* Track if this vector has been set */
 } WEATHER_CONVERSION_VECTOR;
 
 /* Strings defined in weatherConversion.c */
@@ -229,6 +255,7 @@ double calcCompressibility(double P, double T, double xv);
 double calcPotentialTemperature(double T, double P, double P0, CALCULATION_DIRECTION D);
 double calcPressureFromTemperature(double P, double T, double TP, CALCULATION_DIRECTION D);
 double calcVirtualTemperature(double T, double mr, CALCULATION_DIRECTION D);
+//double calcVirtualTemperature(double T_K, double P, double DP);
 double calcMoistAirDensity(double T, double P, double xv, double xCO2);
 double moistAirNumberDensity(double P, double T, double xv);
 double calcDryAirDensity(double T, double P, double xCO2);
@@ -254,9 +281,11 @@ double integrateColumnWaterDensity(WEATHER_CONVERSION_VECTOR *WX,double z0, doub
 double integrateColumnWaterNumberDensity(WEATHER_CONVERSION_VECTOR *WX, double z0, double z1);
 double integrateColumnMoistAirDensity(WEATHER_CONVERSION_VECTOR *WX, double z0, double z1);
 double integrateColumnMoistAirNumberDensity(WEATHER_CONVERSION_VECTOR *WX, double z0, double z1);
-double standardAtmosAltitudeAtPressure(double P);
-double standardAtmosPressureAtAltitude(double Z);
-double speedOfSound(double T, double mass_mix_ratio, double P);
+double specificHeatRatio(double T);
+double moistAirMolarMass(double T, double P, double xv, double xCO2);
+double ambientSpeedOfSound(double T, double M);
+double speedOfSound(double T, double T_v);
+double speedOfSoundDispersion(double c, double P, double T_K, double f);
 double _relError(double a, double b);
 
 WEATHER_CONVERTER_FIELD presentHumidity(WEATHER_CONVERSION_VECTOR *WX);
@@ -264,6 +293,7 @@ WEATHER_CONVERSION_ERROR setAllFields(WEATHER_CONVERSION_VECTOR *WX);
 WEATHER_CONVERSION_ERROR setTemperatures(WEATHER_CONVERSION_VECTOR *WX);
 WEATHER_CONVERSION_ERROR setPressures(WEATHER_CONVERSION_VECTOR *WX);
 WEATHER_CONVERSION_ERROR setHeights(WEATHER_CONVERSION_VECTOR *WX);
+WEATHER_CONVERSION_ERROR setSpeedOfSound(WEATHER_CONVERSION_VECTOR *WX);
 WEATHER_CONVERSION_ERROR setWinds(WEATHER_CONVERSION_VECTOR *WX);
 WEATHER_CONVERSION_ERROR humidityConversion(WEATHER_CONVERSION_VECTOR *WX);
 /* Variables required for error reporting. Definitions are in conversionVectorHelpers.c */
@@ -298,5 +328,12 @@ double moles_O2_P(double P);
 double moles_Ar_P(double P);
 double moles_He_P(double P);
 double moles_H_P(double P);
-
+double molar_density_N2_P(double P);
+double molar_density_O_P(double P);
+double molar_density_O2_P(double P);
+double molar_density_Ar_P(double P);
+double molar_density_He_P(double P);
+double molar_density_H_P(double P);
+double standardAtmosAltitudeAtPressure(double P);
+double standardAtmosPressureAtAltitude(double Z);
 #endif /* WEATHERCONVERSION_H_ */
